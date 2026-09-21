@@ -14,10 +14,11 @@
 
   padding: 10px;
 
-  background-color: #25272C;
+  background-color: var(--bg);
 
-  border: 1px solid #34404b;
-  border-radius: 8px;
+  border: none;
+  box-shadow: var(--raised);
+  border-radius: var(--radius-lg);
 
   align-self: start;
 }
@@ -25,21 +26,20 @@
 .settings-menu-item {
   padding: 13px 15px;
 
-  color: #b8c0c8;
+  color: var(--text-muted);
   text-decoration: none;
 
   border-radius: 5px;
 }
 
 .settings-menu-item:hover {
-  background-color: rgba(255, 255, 255, 0.025);
-  border-color: #465d6d;
-  color: #BDD9D7;
+  background-color: var(--hover);
+  color: var(--accent);
 }
 
 .settings-menu-item.active {
-  background-color: rgba(255, 255, 255, 0.025) ;
-  color: #BDD9D7;
+  background-color: var(--hover) ;
+  color: var(--accent);
 
   font-weight: 600;
 }
@@ -49,10 +49,11 @@
 
   padding: 25px;
 
-  background-color: #25272C;
+  background-color: var(--bg);
 
-  border: 1px solid #34404b;
-  border-radius: 8px;
+  border: none;
+  box-shadow: var(--raised);
+  border-radius: var(--radius-lg);
 }
 
 .settings-section h2 {
@@ -71,13 +72,13 @@
 
   padding: 15px 5px;
 
-  border-bottom: 1px solid #35404b;
+  border-bottom: 1px solid var(--line);
 }
 
 .setting-card p {
   margin: 5px 0 0;
 
-  color: #8e98a4;
+  color: var(--text-muted);
   font-size: 12px;
 }
 
@@ -90,7 +91,7 @@
 }
 
 .account-field label {
-  color: #BDD9D7;
+  color: var(--accent);
   font-size: 13px;
 }
 
@@ -98,11 +99,12 @@
 .setting-card select {
   padding: 9px 10px;
 
-  background-color: rgba(255, 255, 255, 0.025);
-  color: #BDD9D7;
+  background-color: var(--hover);
+  color: var(--accent);
 
-  border: 1px solid #495460;
-  border-radius: 5px;
+  border: none;
+  box-shadow: var(--inset);
+  border-radius: var(--radius-md);
 }
 
 .settings-button,
@@ -118,14 +120,16 @@
 
 .settings-button {
   background-color: transparent;
-  color: #BDD9D7;
+  color: var(--accent);
 
-  border: 1px solid #BDD9D7;
+  border: none;
+  box-shadow: var(--raised-sm);
 }
 
 .danger-button {
   background-color: transparent;
-  color: #D97878;
+  color: var(--danger);
 
-  border: 1px solid #D97878;
+  border: none;
+  box-shadow: var(--raised-sm);
 }

@@ -19,9 +19,10 @@
     
     padding: 20px 12px;
 
-    background-color: #25272C;
-    border: 1px solid #34404b;
-    border-radius: 8px;
+    background-color: var(--bg);
+    border: none;
+  box-shadow: var(--raised);
+    border-radius: var(--radius-lg);
 
     box-sizing: border-box;
 }
@@ -38,41 +39,41 @@
     top: 15px;
     left: 15px;
 
-    color: #BDD9D7;
+    color: var(--accent);
     font-size: 13px;
 }
 
 .summary-value {
     margin-top: 22px;
 
-    color: #BDD9D7;
+    color: var(--accent);
     font-size: 28px;
     font-weight: 700;
 }
 
 .summary-unit {
-    color: #b8c0c8;
+    color: var(--text-muted);
     font-size: 13px;
 }
 
 .summary-card.online .summary-value {
-    color: #6FBF9A;
+    color: var(--success);
 }
 
 .summary-card.offline .summary-value {
-    color: #D97878;
+    color: var(--danger);
 }
 
 .summary-card.vpn .summary-value {
-    color: #60a5fa;
+    color: var(--accent);
 }
 
 .summary-card.event .summary-value {
-    color: #D6A85F;
+    color: var(--warning);
 }
 
 .summary-card.alert .summary-value {
-    color: #D6A85F;
+    color: var(--warning);
 }
 
 .camera-list {
@@ -91,20 +92,21 @@
 
 .channel-selector button {
     padding: 8px, 16px;
-    border: 1px solid #BDD9D7;
-    border-radius: 5px;
+    border: none;
+  box-shadow: var(--raised-sm);
+    border-radius: var(--radius-md);
     background-color: transparent;
-    color: #BDD9D7;
+    color: var(--accent);
     cursor: pointer;
 }
 
 .channel-selector button:hover {
-  background-color: #1b2f3d;
+  background-color: var(--hover);
 }
 
 .channel-selector button.active {
-    background-color: #BDD9D7;
-    color: #25272C;
+    background-color: var(--accent);
+    color: var(--bg);
 }
 
 .multiview-toolbar {
@@ -126,22 +128,23 @@
 .channel-selector button {
     padding: 8px 16px;
 
-    border: 1px solid #BDD9D7;
-    border-radius: 5px;
+    border: none;
+  box-shadow: var(--raised-sm);
+    border-radius: var(--radius-md);
 
     background-color: transparent;
-    color: #BDD9D7;
+    color: var(--accent);
 
     cursor: pointer;
 }
 
 .channel-selector button:hover {
-  background-color: #1b2f3d;
+  background-color: var(--hover);
 }
 
 .channel-selector button.active {
-    background-color: #BDD9D7;
-    color: #25272C;
+    background-color: var(--accent);
+    color: var(--bg);
 }
 
 
@@ -159,21 +162,22 @@
 
     box-sizing: border-box;
 
-    background-color: #25272C;
-    color: #BDD9D7;
+    background-color: var(--bg);
+    color: var(--accent);
 
-    border: 1px solid #34404b;
-    border-radius: 5px;
+    border: none;
+  box-shadow: var(--inset);
+    border-radius: var(--radius-md);
 
     outline: none;
 }
 
 .camera-search input::placeholder {
-    color: #8d949c;
+    color: var(--text-muted);
 }
 
 .camera-search input:focus {
-    border-color: #BDD9D7;
+    box-shadow: var(--inset), 0 0 0 1px var(--accent-ring);
 }
 
 
@@ -184,21 +188,29 @@
 
     padding: 0 13px;
 
-    border: 1px solid #34404b;
-    border-radius: 5px;
+    border: none;
+  box-shadow: var(--raised-sm);
+    border-radius: var(--radius-md);
 
     background-color: transparent;
-    color: #b8c0c8;
+    color: var(--text-muted);
 
     cursor: pointer;
 }
 
 .filter-button:hover {
-  background-color: rgba(255, 255, 255, 0.025);
+  background-color: var(--hover);
 }
 
 .filter-button.active {
-  background-color: #34404b;
-    border-color: #34404b;
-    color: #BDD9D7;
+  background-color: transparent;
+    box-shadow: var(--inset);
+    color: var(--accent);
+}
+
+/* Neumorphic: 채널 선택 */
+.channel-selector button.active {
+  background-color: var(--accent);
+  color: var(--bg);
+  box-shadow: var(--raised-sm);
 }

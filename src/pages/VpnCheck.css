@@ -6,8 +6,8 @@
   justify-content: center;
   align-items: center;
 
-  background-color: #25272C;
-  color: #BDD9D7;
+  background-color: var(--bg);
+  color: var(--accent);
 }
 
 
@@ -42,19 +42,19 @@
 
 /* 연결 확인 중 */
 .vpn-message.checking {
-  color: #D6A85F;
+  color: var(--warning);
 }
 
 
 /* 연결 성공 */
 .vpn-message.success {
-  color: #6FBF9A;
+  color: var(--success);
 }
 
 
 /* 연결 실패 */
 .vpn-message.fail {
-  color: #D97878;
+  color: var(--danger);
 }
 
 
@@ -67,7 +67,7 @@
   height: 52px;
 
   border: 5px solid rgba(245, 166, 35, 0.25);
-  border-top-color: #D6A85F;
+  border-top-color: var(--warning);
 
   border-radius: 50%;
 
@@ -93,7 +93,7 @@
 .vpn-success-icon {
   font-size: 58px;
 
-  color: #6FBF9A;
+  color: var(--success);
 
   animation: vpn-icon-pop 0.3s ease-out;
 }
@@ -106,7 +106,7 @@
 .vpn-fail-icon {
   font-size: 58px;
 
-  color: #D97878;
+  color: var(--danger);
 
   animation: vpn-icon-pop 0.3s ease-out;
 }

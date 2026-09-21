@@ -6,9 +6,9 @@
   justify-content: center;
   align-items: center;
 
-  background-color: #25272C;
+  background-color: var(--bg);
 
-  color: #BDD9D7;
+  color: var(--accent);
 
   box-sizing: border-box;
 }
@@ -28,7 +28,7 @@
 .login-title {
   margin: 0 0 45px;
 
-  color: #BDD9D7;
+  color: var(--accent);
 
   font-size: 48px;
   font-weight: 700;
@@ -71,14 +71,15 @@
 
   box-sizing: border-box;
 
-  color: #BDD9D7;
+  color: var(--accent);
 
   font-size: 16px;
 
   background-color: transparent;
 
-  border: 1px solid #34404b;
-  border-radius: 10px;
+  border: none;
+  box-shadow: var(--inset);
+  border-radius: var(--radius-md);
 
   outline: none;
 
@@ -89,14 +90,13 @@
 
 
 .login-input::placeholder {
-  color: #8d949c;
+  color: var(--text-muted);
 }
 
 
 .login-input:focus {
-  border-color: #BDD9D7;
+  box-shadow: var(--inset), 0 0 0 1px var(--accent-ring);
 
-  box-shadow: 0 0 0 1px #BDD9D7;
 }
 
 /* 비밀번호 영역 */
@@ -130,7 +130,7 @@
 
   padding: 0;
 
-  color: #b8c0c8;
+  color: var(--text-muted);
   background: transparent;
 
   border: none;
@@ -142,7 +142,7 @@
 
 
 .eye-button:hover {
-  color: #BDD9D7;
+  color: var(--accent);
 }
 
 
@@ -157,12 +157,12 @@
   align-items: center;
   justify-content: center;
 
-  color: #25272C;
+  color: var(--bg);
 
   font-size: 17px;
   font-weight: 700;
 
-  background-color: #BDD9D7;
+  background-color: var(--accent);
 
   border-radius: 8px;
   border: none;
@@ -176,7 +176,7 @@
 
 
 .login-button:hover {
-  background-color: #9FC5C4;
+  background-color: var(--accent-hover);
 }
 
 
@@ -205,7 +205,7 @@
 .account-link {
   padding: 0;
 
-  color: #b8c0c8;
+  color: var(--text-muted);
 
   font-size: 14px;
 
@@ -218,25 +218,45 @@
 
 
 .account-link:hover {
-  color: #BDD9D7;
+  color: var(--accent);
   text-decoration: underline;
 }
 
 
 .divider {
-  color: #34404b;
+  color: var(--text-muted);
   font-size: 12px;
 }
 
 .login-error {
   margin: 12px 0 0;
 
-  color: #BDD9D7;
+  color: var(--accent);
 
   font-size: 14px;
   line-height: 1.4;
 }
 
 .login-error-auth {
-  color: #D97878;
+  color: var(--danger);
+}
+
+/* Neumorphic: 주요 버튼 */
+.login-button {
+  border-radius: var(--radius-md);
+  box-shadow: var(--raised-sm);
+}
+
+.login-button:hover {
+  box-shadow: var(--raised);
+}
+
+.login-button:active {
+  box-shadow: var(--inset);
+  background-color: var(--accent);
+  color: var(--bg);
+}
+
+.login-input::placeholder {
+  color: var(--text-muted);
 }

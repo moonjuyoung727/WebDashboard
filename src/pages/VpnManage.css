@@ -21,10 +21,11 @@
 .vpn-table-section {
   margin-top: 15px;
 
-  background-color: #25272C;
+  background-color: var(--bg);
 
-  border: 1px solid #34404b;
-  border-radius: 8px;
+  border: none;
+  box-shadow: var(--raised);
+  border-radius: var(--radius-lg);
 }
 
 
@@ -51,11 +52,12 @@
 
   box-sizing: border-box;
 
-  background-color: rgba(255, 255, 255, 0.025);
-  color: #BDD9D7;
+  background-color: var(--hover);
+  color: var(--accent);
 
-  border: 1px solid #34404b;
-  border-radius: 5px;
+  border: none;
+  box-shadow: var(--inset);
+  border-radius: var(--radius-md);
 
   outline: none;
 }
@@ -66,16 +68,17 @@
   padding: 0 14px;
 
   background-color: transparent;
-  color: #BDD9D7;
+  color: var(--accent);
 
-  border: 1px solid #34404b;
-  border-radius: 5px;
+  border: none;
+  box-shadow: var(--raised-sm);
+  border-radius: var(--radius-md);
 
   cursor: pointer;
 }
 
 .filter-reset-button:hover {
-  background-color: #34404b;
+  background-color: var(--hover);
 }
 
 /* =========================
@@ -90,10 +93,11 @@
   margin-bottom: 15px;
   padding: 16px 20px;
 
-  background-color: #25272C;
+  background-color: var(--bg);
 
-  border: 1px solid #34404b;
-  border-radius: 8px;
+  border: none;
+  box-shadow: var(--raised);
+  border-radius: var(--radius-lg);
 }
 
 
@@ -107,7 +111,7 @@
 }
 
 .peer-vpn-title {
-  color: #BDD9D7;
+  color: var(--accent);
 
   font-size: 16px;
   font-weight: 600;
@@ -121,28 +125,28 @@
 /* 연결 안 됨 */
 
 .peer-vpn-box.disconnected .peer-vpn-message {
-  color: #D97878;
+  color: var(--danger);
 }
 
 
 /* 연결 중 */
 
 .peer-vpn-box.connecting .peer-vpn-message {
-  color: #D6A85F;
+  color: var(--warning);
 }
 
 
 /* 연결 완료 */
 
 .peer-vpn-box.connected .peer-vpn-message {
-  color: #6FBF9A;
+  color: var(--success);
 }
 
 
 /* 연결 오류 */
 
 .peer-vpn-box.error .peer-vpn-message {
-  color: #D97878;
+  color: var(--danger);
 }
 
 
@@ -155,7 +159,7 @@
   height: 14px;
 
   border: 2px solid rgba(251, 146, 60, 0.3);
-  border-top-color: #D6A85F;
+  border-top-color: var(--warning);
 
   border-radius: 50%;
 

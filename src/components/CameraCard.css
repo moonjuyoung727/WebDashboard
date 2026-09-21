@@ -1,11 +1,12 @@
 
 .camera-card {
-    border-radius: 5px;
-    border: 2px solid rgba(255, 255, 255, 0.025);
-    color: #BDD9D7;
+    border-radius: var(--radius-lg);
+    border: none;
+  box-shadow: var(--raised);
+    color: var(--accent);
     padding: 10px;
     box-sizing: border-box;
-    background-color: #282c34;
+    background-color: var(--bg);
     overflow: visible;
 }
 
@@ -29,7 +30,7 @@
 
 .name {
     font-size: 13px;
-    color: #BDD9D7;
+    color: var(--accent);
 }
 
 .camera-info {
@@ -45,8 +46,8 @@
     transform: translateX(4);
 }
 .status.online {
-    color:#6FBF9A;
+    color:var(--success);
 }
 .status.offline {
-    color: #D97878;
+    color: var(--danger);
 }

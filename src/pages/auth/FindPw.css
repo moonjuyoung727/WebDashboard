@@ -4,5 +4,5 @@
     align-items: center;
     justify-content: center;
     font-size: 2pc;
-    color:#BDD9D7;  
+    color:var(--accent);  
 }

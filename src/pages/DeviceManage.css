@@ -4,7 +4,7 @@
 
   margin: 30px auto;
 
-  color: #BDD9D7;
+  color: var(--accent);
 }
 
 .device-manage-top {
@@ -18,8 +18,9 @@
 .device-tabs {
   display: flex;
 
-  border: 1px solid #34404b;
-  border-radius: 6px;
+  border: none;
+  box-shadow: var(--raised-sm);
+  border-radius: var(--radius-md);
 
   overflow: hidden;
 }
@@ -28,10 +29,10 @@
   padding: 10px 18px;
 
   border: none;
-  border-right: 1px solid #34404b;
+  border-right: 1px solid var(--line);
 
   background-color: transparent;
-  color: #aeb8c1;
+  color: var(--text-muted);
 
   cursor: pointer;
 }
@@ -41,8 +42,9 @@
 }
 
 .device-tabs button.active {
-  background-color: #17334a;
-  color: #79baf0;
+  background-color: transparent;
+  box-shadow: var(--inset);
+  color: var(--accent);
 }
 
 .register-camera-button {
@@ -52,22 +54,24 @@
 
   padding: 10px 14px;
 
-  border: 1px solid #62717d;
-  border-radius: 5px;
+  border: none;
+  box-shadow: var(--raised-sm);
+  border-radius: var(--radius-md);
 
   background-color: transparent;
-  color: #BDD9D7;
+  color: var(--accent);
 
   cursor: pointer;
 }
 
 .register-camera-button:hover {
-  background-color: rgba(255, 255, 255, 0.025);
+  background-color: var(--hover);
 }
 
 .device-table-wrapper {
-  border: 1px solid #34404b;
-  border-radius: 7px;
+  border: none;
+  box-shadow: var(--raised);
+  border-radius: var(--radius-lg);
 
   overflow: hidden;
 }
@@ -85,11 +89,11 @@
   text-align: center;
   vertical-align: middle;
 
-  border-bottom: 1px solid #36434e;
+  border-bottom: 1px solid var(--line);
 
-  background-color: rgba(255, 255, 255, 0.025);
+  background-color: var(--hover);
 
-  color: #BDD9D7;
+  color: var(--accent);
   font-size: 13px;
 }
 
@@ -100,18 +104,18 @@
   text-align: center;
   vertical-align: middle;
 
-  border-bottom: 1px solid #34404b;
+  border-bottom: 1px solid var(--line);
 
   font-size: 14px;
 }
 
 .device-table tbody tr:last-child td {
   border-bottom: none;
-  color: #BDD9D7;
+  color: var(--accent);
 }
 
 .device-table tbody tr:hover {
-  background-color: rgba(255, 255, 255, 0.025);
+  background-color: var(--hover);
 }
 
 .device-table th:nth-child(1) {
@@ -152,19 +156,19 @@
 }
 
 .device-status.online {
-  color: #6FBF9A;
+  color: var(--success);
 }
 
 .device-status.online .status-dot {
-  background-color: #6FBF9A;
+  background-color: var(--success);
 }
 
 .device-status.offline {
-  color: #D97878;
+  color: var(--danger);
 }
 
 .device-status.offline .status-dot {
-  background-color: #D97878;
+  background-color: var(--danger);
 }
 
 .icon-button {
@@ -177,7 +181,7 @@
   border: none;
 
   background-color: transparent;
-  color: #bdc6ce;
+  color: var(--text-muted);
 
   font-size: 19px;
   cursor: pointer;
@@ -188,7 +192,7 @@
 }
 
 .icon-button.delete:hover {
-  color: #D97878;
+  color: var(--danger);
 }
 
 .device-actions {
@@ -214,14 +218,16 @@
   width: 17px;
   height: 17px;
 
-  border: 2px solid #687681;
+  background-color: var(--bg);
+  box-shadow: var(--inset);
   border-radius: 50%;
 
   cursor: pointer;
 }
 
 .default-radio input:checked + span {
-  border: 5px solid #438dd2;
+  border: 5px solid var(--bg);
+  background-color: var(--accent);
 
   box-sizing: border-box;
 }
@@ -229,9 +235,10 @@
 .device-empty {
   padding: 70px;
 
-  border: 1px solid #34404b;
-  border-radius: 7px;
+  border: none;
+  box-shadow: var(--raised);
+  border-radius: var(--radius-lg);
 
   text-align: center;
-  color: #83919c;
+  color: var(--text-muted);
 }

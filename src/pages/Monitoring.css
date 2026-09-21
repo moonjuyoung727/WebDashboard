@@ -4,7 +4,7 @@
 
   box-sizing: border-box;
 
-  color: #BDD9D7;
+  color: var(--accent);
 }
 
 
@@ -42,7 +42,7 @@
 
   border-radius: 5px;
 
-  background-color: #a63832;
+  background-color: var(--danger);
   color: white;
 
   font-size: 12px;
@@ -67,13 +67,13 @@
 
 
 .connection-badge.connected {
-  color: #6FBF9A;
+  color: var(--success);
   background-color: rgba(76, 175, 80, 0.08);
 }
 
 
 .connection-badge.disconnected {
-  color: #D97878;
+  color: var(--danger);
   background-color: rgba(244, 67, 54, 0.08);
 }
 
@@ -128,10 +128,12 @@
   align-items: center;
   justify-content: center;
 
-  background-color: #05080c;
+  background-color: #15171a;
+  box-shadow: var(--inset);
 
-  border: 1px solid #34404b;
-  border-radius: 8px;
+  border: none;
+  box-shadow: var(--raised);
+  border-radius: var(--radius-lg);
 
   overflow: hidden;
 
@@ -148,7 +150,7 @@
 
 
 .video-placeholder {
-  color: #74808d;
+  color: var(--text-muted);
 
   font-size: 18px;
 }
@@ -180,7 +182,7 @@
 .video-live {
   padding: 3px 6px;
 
-  background-color: #b13b34;
+  background-color: var(--danger);
 
   border-radius: 4px;
 
@@ -215,7 +217,7 @@
   /* background-color: rgba(10, 22, 32, 0.88); */
   background-color: transparent;
 
-  color: #BDD9D7;
+  color: var(--accent);
 
   cursor: pointer;
 
@@ -224,7 +226,7 @@
 
 
 .stream-refresh-button:hover {
-  background-color: rgba(255, 255, 255, 0.025);
+  background-color: var(--hover);
 }
 
 
@@ -270,8 +272,9 @@
 
   padding: 20px;
 
-  border: 1px solid #34404b;
-  border-radius: 8px;
+  border: none;
+  box-shadow: var(--raised);
+  border-radius: var(--radius-lg);
 
   background-color: rgba(12, 24, 34, 0.55);
 
@@ -286,7 +289,7 @@
 
   padding-bottom: 14px;
 
-  border-bottom: 1px solid #34404b;
+  border-bottom: 1px solid var(--line);
 }
 
 
@@ -302,12 +305,13 @@
 .edit-name-button {
   padding: 6px 9px;
 
-  border: 1px solid #34404b;
-  border-radius: 5px;
+  border: none;
+  box-shadow: var(--raised-sm);
+  border-radius: var(--radius-md);
 
   background-color: transparent;
 
-  color: #BDD9D7;
+  color: var(--accent);
 
   font-size: 12px;
 
@@ -316,7 +320,7 @@
 
 
 .edit-name-button:hover {
-  background-color: rgba(255, 255, 255, 0.025);
+  background-color: var(--hover);
 }
 
 
@@ -331,21 +335,21 @@
 
   gap: 15px;
 
-  border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+  border-bottom: 1px solid var(--line);
 
   font-size: 13px;
 }
 
 
 .info-label {
-  color: #c4cbd1;
+  color: var(--text-muted);
 
   flex-shrink: 0;
 }
 
 
 .info-value {
-  color: #BDD9D7;
+  color: var(--accent);
 
   text-align: right;
 }
@@ -360,7 +364,7 @@
   font-size: 15px;
   font-weight: 700;
 
-  border-bottom: 1px solid #34404b;
+  border-bottom: 1px solid var(--line);
 }
 
 
@@ -375,12 +379,12 @@
 
 
 .status-value.online {
-  color: #6FBF9A;
+  color: var(--success);
 }
 
 
 .status-value.offline {
-  color: #D97878;
+  color: var(--danger);
 }
 
 
@@ -395,7 +399,7 @@
 
 /* 표시/수정 상태 모두 우측 정렬, 수정 폭 고정 (Row 높이는 min-height 42px로 유지) */
 .info-row span.info-name {
-  color: #BDD9D7;
+  color: var(--accent);
   font-size: 13px;
   text-align: right;
 }

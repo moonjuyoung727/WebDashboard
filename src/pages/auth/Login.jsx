@@ -34,7 +34,7 @@ const handleLogin = async (event) => {
       setLoginErrorType("input");
       userIdRef.current?.focus();
       return;
-    }
+    } 
 
     //비밀번호 미입력
     if (!password) {

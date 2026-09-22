@@ -16,6 +16,7 @@ import {
 } from "react-icons/fi";
 
 import { eventLogs as initialEventLogs } from "../data/eventLogs";
+// import { getEvents } from "../api/eventApi";  // 서버 연결 후 주석 해제
 
 
 function EventLogs() {
@@ -38,15 +39,9 @@ function EventLogs() {
   useEffect(() => {
     async function getEvents() {
       try {
-        const response = await fetch ("/api/events");
+        const data = await getEvents();
 
-        if (!response.ok) {
-          throw new Error("이벤트 조회 실패");
-        }
-        
-        const data = await response.json();
-
-        setEvents(date);
+        setEvents(data);
       } catch (error) {
         console.error(error);
       }

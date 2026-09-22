@@ -7,6 +7,7 @@ import EditableCameraName from "../components/EditableCameraName";
 import CameraRegisterModal from "../components/CameraRegisterModal";
 
 import { cameras as initialCameras } from "../data/cameras";
+// import { registerCamera } from "../api/cameraApi";  // 서버 연결 후 주석 해제
 
 function DeviceManage() {
   const [ cameras, setCameras ] = useState(initialCameras);

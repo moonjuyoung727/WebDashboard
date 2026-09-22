@@ -29,9 +29,11 @@ import Monitoring from "./pages/Monitoring";
 import NotFound from "./pages/NotFound";
 import VpnManage from "./pages/VpnManage";
 import VpnCheck from "./pages/VpnCheck";
+import { VpnProvider } from "./context/VpnContext";
 
 function App() {
   return (
+    <VpnProvider>
     <BrowserRouter>
       <Routes>
         <Route
@@ -111,6 +113,7 @@ function App() {
         />
       </Routes>
     </BrowserRouter>
+    </VpnProvider>
   );
 }
 

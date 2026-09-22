@@ -1,6 +1,8 @@
 import { useState, useEffect } from "react";
 import "./Settings.css";
 import Toggle from "../../components/Toggle";
+import { getNotificationSettings } from "../../api/settingsApi";
+// import { getNotificationSettings, updateNotificationSetting } from "../../api/settingsApi";  // 서버 연결 후 저장 호출 주석 해제 시
 
 function NotificationSettings() {
   const [settings, setSettings] = useState({
@@ -14,14 +16,15 @@ function NotificationSettings() {
 
 //   서버 연결 후
 useEffect(() => {
-  async function getSettings() {
-    const response = await fetch(
-      "/api/notification-settings"
-    );
-    const data = await response.json();
-    setSettings(data);
+  async function loadSettings() {
+    try {
+      const data = await getNotificationSettings();
+      setSettings(data);
+    } catch (error) {
+      console.error(error);
+    }
   }
-  getSettings();
+  loadSettings();
 }, []);
 
   //서버 연결 후에는 삭제
@@ -41,22 +44,10 @@ async function handleToggle(key) {
     [key]: newValue
   }));
 
-  const response = await fetch(
-    `/api/notification-settings/${key}`,
-    {
-      method: "PATCH",
-
-      headers: {
-        "Content-Type": "application/json"
-      },
-
-      body: JSON.stringify({
-        enabled: newValue
-      })
-    }
-  );
-  if (!response.ok) {
-    console.error("설정 변경 실패");
+  try {
+    await updateNotificationSetting(key, newValue);
+  } catch (error) {
+    console.error(error);
     setSettings((prev) => ({
       ...prev,
       [key]: !newValue

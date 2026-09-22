@@ -1,33 +1,21 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { FaCheckCircle, FaTimesCircle} from "react-icons/fa";
+import { useVpn } from "../context/VpnContext";
 import "./VpnCheck.css";
 
 function VpnCheck() {
   const navigate = useNavigate();
+  const { checkClientVpn } = useVpn();
 
   const [ status, setStatus ] = useState("checking");
 
   useEffect(() => {
     async function checkVpnStatus() {
       try {
-        
-        /*
-        const token = localStorage.getItem("accessToken");
-        
-        const response = await fetch("/api/status", {
-          method: "GET",
-          headrs: {
-          Authorization: `Bearer ${token}`
-        }
-      });
 
-      const data = await response.json();
-
-      const vpnConnected = data.connected;
-      */
-
-        const vpnConnected = false;  /* 임시 테스트용 */
+        // 서버 확인은 api/vpnApi.js, 결과는 VpnContext 에서 공유
+        const vpnConnected = await checkClientVpn();
 
         setTimeout(() => {
           if (vpnConnected) {
@@ -55,7 +43,7 @@ function VpnCheck() {
       }
     }
     checkVpnStatus();
-  }, [navigate]);
+  }, [navigate, checkClientVpn]);
 
   return (
     <main className="vpn-check-page">

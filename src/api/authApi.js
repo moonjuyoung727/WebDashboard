@@ -70,3 +70,10 @@ export async function signup(userId, email, password) {
 
   return await response.json();
 }
+
+export async function logout() {
+  return await fetch("/api/auth/logout", {
+    method: "POST",
+    credentials: "include"
+  });
+}

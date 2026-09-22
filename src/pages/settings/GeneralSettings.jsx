@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react";
 import Toggle from "../../components/Toggle";
+import { getGeneralSettings } from "../../api/settingsApi";
+// import { getGeneralSettings, updateGeneralSetting } from "../../api/settingsApi";  // 서버 연결 후 저장 호출 주석 해제 시
 import "./Settings.css";
 
 function GeneralSettings() {
@@ -10,23 +12,16 @@ function GeneralSettings() {
   });
 
   useEffect(() => {
-    async function getGeneralSettings() {
+    async function loadGeneralSettings() {
         try {
-            const response = await fetch(
-                "/api/general-settings"
-            );
-            if (!response.ok) {
-                throw new Error("일반 설정 정보 조회 실패")
-            }
-
-            const data = await response.json();
+            const data = await getGeneralSettings();
 
             setSettings(data);
         } catch (error) {
             console.error(error);
         }
     }
-    getGeneralSettings();
+    loadGeneralSettings();
   },[]);
 
   //서버 연결 후에는 삭제
@@ -56,22 +51,7 @@ function handleChannelChange(e) {
     }));
 
     try {
-        const response = await fetch(
-            `/api/general-settings/${key}`,
-            {
-                method: "PATCH",
-                headers: {
-                    "Content-Type": "application/json" 
-                },
-                body: JSON.stringify({
-                    value: newValue
-                })
-            }
-        );
-
-        if (!response.ok) {
-            throw new Error("설정 업데이트 실패");
-        }
+        await updateGeneralSetting(key, newValue);
     } catch (error) {
         console.error(error);
         setSettings((prev) => ({
@@ -92,22 +72,7 @@ function handleChannelChange(e) {
     }));
 
     try {
-        const response = await fetch(
-            "/api/general-settings/defaultChannel",
-            {
-                method: "PATCH",
-                headers: {
-                    "Content-Type": "application/json"
-                },
-                body: JSON.stringify({
-                    value: newChannel
-                })
-            }
-        );
-
-        if (!response.ok) {
-            throw new Error("기본 채널 수 변경 실패");
-        }
+        await updateGeneralSetting("defaultChannel", newChannel);
     } catch (error) {
         console.error(error);
         setSettings((prev) => ({

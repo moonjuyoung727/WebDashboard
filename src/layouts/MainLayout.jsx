@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from "react";
 import { Outlet, useLocation, useNavigate } from "react-router-dom";
 import Sidebar from "../components/Sidebar";
 import recentNotifications from "../data/recentNotifications.js";
+// import { logout } from "../api/authApi";  // 백엔드 연결 시 주석 해제
 import "./MainLayout.css";
 
 function MainLayout() {
@@ -84,10 +85,7 @@ function MainLayout() {
     });
 
     // try {
-    //   await fetch("/api/auth/logout", {
-    //     method: "POST",
-    //     credentials: "include"
-    //   });
+    //   await logout();
     // } finally {
     //   localStorage.removeItem("accessToken");
     //   localStorage.removeItem("refreshToken");
@@ -289,7 +287,17 @@ function MainLayout() {
 
         {openMenu === "settings" && (
           <div className="header-dropdown settings-dropdown">
-            <button 
+            <button
+              type="button"
+              onClick={() => {
+                setOpenMenu(null);
+                navigate("/settings/general");
+              }}
+            >
+              일반 설정
+            </button>
+
+            <button
               type="button"
               onClick={() => {
                 setOpenMenu(null);
@@ -299,14 +307,14 @@ function MainLayout() {
               알림 설정
             </button>
 
-            <button 
+            <button
               type="button"
               onClick={() => {
                 setOpenMenu(null);
-                navigate("/settings/general");
+                navigate("/settings/subscription");
               }}
             >
-              일반 설정
+              구독 설정
             </button>
             </div>
         )}

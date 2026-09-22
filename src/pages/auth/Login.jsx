@@ -175,7 +175,7 @@ const handleLogin = async (event) => {
         <button
           type="button"
           className="account-link"
-          onClick={() => navigate("/find-password")}
+          onClick={() => navigate("/find-pw")}
         >
           비밀번호 찾기
         </button>

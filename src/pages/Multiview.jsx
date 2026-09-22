@@ -5,18 +5,26 @@ import { useState } from "react";
 import CameraCard from "../components/CameraCard";
 import Pagination from "../components/Pagination";
 import { cameras as initialCameras } from "../data/cameras";
+// import { getCameras } from "../api/cameraApi";  // 서버 연결 후 주석 해제
+
+// 채널 수별 한 페이지 배치 (가로 x 세로)
+const CHANNEL_LAYOUTS = {
+  2: { cols: 2, rows: 1 },
+  4: { cols: 2, rows: 2 },
+  6: { cols: 3, rows: 2 },
+};
 
 function Multiview() {
 
   const [cameras, setCameras] = useState(initialCameras);
-  const [channelCount, setChannelCount] = useState(4);
+  const [channelCount, setChannelCount] = useState(6);
   const [currentPage, setCurrentPage] = useState(1);
   const [searchKeyword, setSearchKeyword] = useState("");
   const [onlineOnly, setOnlineOnly] = useState(false);
 
-  const rowsPerPage = 2;
+  const { cols, rows } = CHANNEL_LAYOUTS[channelCount];
 
-  const camerasPerPage = channelCount * rowsPerPage;
+  const camerasPerPage = cols * rows;
 
   const filteredCameras = cameras.filter((camera) => {
     const keyword = searchKeyword.toLowerCase();
@@ -54,13 +62,6 @@ function Multiview() {
     (camera) => camera.status === "offline"
   ).length;
 
-  const vpnConnectedBoards = cameras.filter(
-    (camera) => camera.vpnConnected === true
-  ).length;
-  
-  const todayAiEvents = 18;
-  const unreadAlerts = 12;
-
   function handleChannelChange(count) {
     setChannelCount(count);
     setCurrentPage(1);
@@ -80,8 +81,7 @@ function Multiview() {
 
   // useEffect(() => {
   //   async function getCameras() {
-  //     const response = await fetch("/api/cameras");
-  //     const data = await response.json();
+  //     const data = await getCameras();
 
   //     setCameras(data);
   //   }
@@ -109,47 +109,19 @@ function Multiview() {
           <strong className="summary-value">{offlineBoards}</strong>
           <span className="summary-unit">대</span>
         </div>
-
-        <div className="summary-card vpn">
-          <span className="summary-title">VPN 연결</span>
-          <strong className="summary-value">{vpnConnectedBoards}</strong>
-          <span className="summary-unit">대</span>
-        </div>
-
-        <div className="summary-card event">
-          <span className="summary-title">오늘 AI 이벤트</span>
-          <strong className="summary-value">{todayAiEvents}</strong>
-          <span className="summary-unit">건</span>
-        </div>
-
-        <div className="summary-card alert">
-          <span className="summary-title">미확인 알림</span>
-          <strong className="summary-value">{unreadAlerts}</strong>
-          <span className="summary-unit">건</span>
-        </div>
       </section>
 
     <div className="multiview-toolbar">
       <div className="channel-selector">
-        <button
-          className={channelCount === 2 ? "active" : ""}
-          onClick={() => handleChannelChange(2)}
-        >
-          2채널
-        </button>
-        <button
-          className={channelCount === 4 ? "active" : ""}
-          onClick={() => handleChannelChange(4)}
-        >
-          4채널
-        </button>
-
-        <button
-          className={channelCount === 8 ? "active" : ""}
-          onClick={() => handleChannelChange(8)}
-        >
-          8채널
-        </button>
+        {Object.keys(CHANNEL_LAYOUTS).map((count) => (
+          <button
+            key={count}
+            className={channelCount === Number(count) ? "active" : ""}
+            onClick={() => handleChannelChange(Number(count))}
+          >
+            {count}채널
+          </button>
+        ))}
       </div>
 
       <div className="camera-search">
@@ -173,12 +145,10 @@ function Multiview() {
     <div className="camera-container">
       <main 
         className="camera-list"
-        style={{
-          gridTemplateColumns: `repeat(${channelCount}, 1fr)`
-        }}
+        style={{ "--cols": cols, "--rows": rows }}
       >
         {currentCameras.map((camera) => (
-          <CameraCard camera={camera} />
+          <CameraCard key={camera.id} camera={camera} />
         ))}
       </main>
     </div>

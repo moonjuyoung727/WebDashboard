@@ -1,15 +1,15 @@
 .board-summary {
     display: grid;
-    grid-template-columns: repeat(6, 1fr);
+    grid-template-columns: repeat(3, 1fr);
 
     gap: 12px;
-    margin: 0 30px 25px;
+    margin: 0 50px 20px;
 
     box-sizing: border-box;
 }
 
 .summary-card {
-    min-height: 100px;
+    min-height: 30px;
 
     display: flex;
     align-items: baseline;
@@ -17,7 +17,7 @@
 
     gap: 5px;
     
-    padding: 20px 12px;
+    padding: 12px 3px;
 
     background-color: var(--bg);
     border: none;
@@ -76,10 +76,43 @@
     color: var(--warning);
 }
 
+/*
+  카드 크기: 스크롤을 맨 위에 둔 상태에서 카드(+페이지네이션)가 화면 안에 들어오도록
+  세로 여유 공간에서 카드 폭을 역산한다. (--cols / --rows 는 Multiview.jsx 에서 지정)
+  --reserved-height : 헤더 + 요약 카드 + 툴바 + 페이지네이션 + 여백
+  --card-extra      : 카드 한 장에서 영상(16:9) 외의 높이 (패딩 + 이름/상태 영역)
+*/
+.camera-container {
+    --gap: 15px;
+    --reserved-height: 390px;
+    --card-extra: 70px;
+    --card-scale: 1.75; /* 화면 높이에 맞춘 기본 카드 폭 대비 배율 (1 = 화면 안에 딱 맞음) */
+
+    padding: 0 30px;
+    box-sizing: border-box;
+}
+
 .camera-list {
     display: grid;
-    gap: 15px;
-    width: 100%;
+    grid-template-columns: repeat(var(--cols), 1fr);
+    gap: var(--gap);
+
+    /* 세로 공간이 허용하는 카드 한 장의 최대 폭 x 열 수 (최소 폭 아래로는 줄이지 않음) */
+    width: min(
+        100%,
+        max(
+            calc(var(--cols) * 240px * var(--card-scale) + (var(--cols) - 1) * var(--gap)),
+            calc(
+                var(--cols) * (
+                    (
+                        (100vh - var(--reserved-height) - (var(--rows) - 1) * var(--gap))
+                        / var(--rows) - var(--card-extra)
+                    ) * 16 / 9 * var(--card-scale)
+                ) + (var(--cols) - 1) * var(--gap)
+            )
+        )
+    );
+    margin: 0 auto;
     box-sizing: border-box;
 }
 
@@ -115,7 +148,7 @@
 
     gap: 10px;
 
-    margin: 20px 30px;
+    margin: 20px 50px;
 }
 
 .channel-selector {

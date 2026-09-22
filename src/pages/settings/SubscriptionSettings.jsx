@@ -1,4 +1,5 @@
 import { useState } from "react";
+// import { updateAutoRenew } from "../../api/settingsApi";  // 서버 연결 후 주석 해제
 
 function SubscriptionSettings() {
   const [subscription, setSubscription] = useState({
@@ -26,22 +27,7 @@ function SubscriptionSettings() {
     }));
 
     try {
-      const response = await fetch(
-        "/api/subscriptions/auto-renew",
-        {
-          method: "PATCH",
-          headers: {
-            "Content-Type": "application/json"
-          },
-          body: JSON.stringify({
-            enabled: newValue
-          })
-        }
-      );
-
-      if (!response.ok) {
-        throw new Error("자동 갱신 변경 실패");
-      }
+      await updateAutoRenew(newValue);
     } catch (error) {
       setSubscription((prev) => ({
         ...prev,

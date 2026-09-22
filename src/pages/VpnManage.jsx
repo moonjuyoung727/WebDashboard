@@ -6,11 +6,13 @@ import { useNavigate } from "react-router-dom";
 import VpnSummary from "../components/vpn/VpnSummary";
 import VpnDeviceTable from "../components/vpn/VpnDeviceTable";
 import VpnPeerStatus from "../components/vpn/VpnPeerStatus";
+import { useVpn } from "../context/VpnContext";
+// import { connectClientVpn, getVpnDevices } from "../api/vpnApi";  // 서버 연결 후 주석 해제
 import "./VpnManage.css";
 
 function VpnManage() {
   const navigate = useNavigate();
-    const [ peerVpnStatus, setPeerVpnStatus ] = useState("disconnected");
+    const { peerVpnStatus, setPeerVpnStatus } = useVpn();
     const [ devices, setDevices ] = useState(initialVpnDevices);
     const [ searchKeyword, setSearchKeyword ] = useState("");
     const [ statusFilter, setStatusFilter ] = useState("all");
@@ -130,17 +132,8 @@ function VpnManage() {
       try {
 
         /*  실제 서버 연동 시 사용
-        const token = localStorage.getItem("accessToken");
-        
-        const response = await fetch("/api/vpn/connect", {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        });
-        if (!response.ok) {
-          throw new Error("VPN 연결 실패");
-        }
+        const data = await connectClientVpn();
+
         if (data.connected) {
           setPeerVpnStatus("connected");
 
@@ -187,8 +180,7 @@ function VpnManage() {
       setRefreshing(true);
 
       try {
-        const response = await fetch("/api/vpn/devices");
-        const data = await response.json();
+        const data = await getVpnDevices();
 
         setDevices(data);
         setLastUpdated(new Date().toLocaleString());

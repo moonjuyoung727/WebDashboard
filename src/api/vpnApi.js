@@ -53,3 +53,53 @@ export async function getVpnDevices() {
 
   return response.json();
 }
+
+
+/* ===== 추가 예정 API — 서버 연결 후 주석 해제 ===== */
+
+/* WEB-F-051 Device VPN 상태 요약
+   응답: { connected, disconnected, error }
+
+export async function getVpnSummary() {
+  const response = await fetch("/api/vpn/devices/summary");
+
+  if (!response.ok) {
+    throw new Error("VPN 상태 요약 조회 실패");
+  }
+
+  return response.json();
+}
+*/
+
+
+/* WEB-F-053 Device VPN 복구 요청
+   응답: { result, vpnStatus }
+
+export async function requestVpnRecovery(deviceId) {
+  const response = await fetch(`/api/vpn/devices/${deviceId}/recover`, {
+    method: "POST"
+  });
+
+  if (!response.ok) {
+    throw new Error("VPN 복구 요청 실패");
+  }
+
+  return response.json();
+}
+*/
+
+
+/* WEB-F-054 Device VPN 상세 정보
+   응답: { deviceId, lastHandshake, vpnIp, connectedDuration, server,
+           error: { code, message, occurredAt } | null, history: [{ at, status, message }] }
+
+export async function getVpnDeviceDetail(deviceId) {
+  const response = await fetch(`/api/vpn/devices/${deviceId}`);
+
+  if (!response.ok) {
+    throw new Error("VPN 상세 정보 조회 실패");
+  }
+
+  return response.json();
+}
+*/

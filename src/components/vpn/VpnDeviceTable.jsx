@@ -4,6 +4,7 @@ function VpnDeviceTable({
   devices,
   onRecoveryRequest,
   onAction, // 기존 코드 호환용
+  onSelect, // 행 클릭 시 상세 정보 (WEB-F-054)
 }) {
 
   function getStatusText(status) {
@@ -88,11 +89,15 @@ function VpnDeviceTable({
             const recovery = getRecoveryState(device);
 
             return (
-              <tr key={device.id}>
+              <tr
+                key={device.id}
+                className={onSelect ? "vpn-row-clickable" : ""}
+                onClick={() => onSelect?.(device)}
+              >
                 <td>{device.name}</td>
 
                 <td>
-                  {device.serialNumber || device.hwnum || "-"}
+                  {device.serialNumber || device.serial || device.hwnum || "-"}
                 </td>
 
                 <td>
@@ -143,7 +148,10 @@ function VpnDeviceTable({
                     <button
                       type="button"
                       className="vpn-recovery-button request"
-                      onClick={() => handleRecoveryRequest(device.id)}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleRecoveryRequest(device.id);
+                      }}
                     >
                       복구 요청
                     </button>

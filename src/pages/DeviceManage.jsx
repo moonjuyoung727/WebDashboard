@@ -5,6 +5,7 @@ import { AiFillStar, AiOutlineStar } from "react-icons/ai";
 
 import EditableCameraName from "../components/EditableCameraName";
 import CameraRegisterModal from "../components/CameraRegisterModal";
+import Pagination from "../components/Pagination";
 
 import { cameras as initialCameras } from "../data/cameras";
 // import { registerCamera } from "../api/cameraApi";  // 서버 연결 후 주석 해제
@@ -14,7 +15,31 @@ function DeviceManage() {
   const [ editingCameraId, setEditingCameraId ] = useState(null);
 
   const [ isRegisterOpen, setIsRegisterOpen ] = useState(false);
-  
+
+  /* pagination */
+  const [ currentPage, setCurrentPage ] = useState(1);
+  const camerasPerPage = 10;
+
+  const totalPages = Math.max(
+    1,
+    Math.ceil(cameras.length / camerasPerPage)
+  );
+
+  // 삭제로 마지막 페이지가 비면 이전 페이지로
+  const safePage = Math.min(currentPage, totalPages);
+
+  const startIndex = (safePage - 1) * camerasPerPage;
+
+  const currentCameras = cameras.slice(
+    startIndex,
+    startIndex + camerasPerPage
+  );
+
+  function handlePageChange(page) {
+    setCurrentPage(page);
+    setEditingCameraId(null);
+  }
+
   function handleCameraNameChange(cameraId, newName) {
     setCameras((prev) =>
     prev.map((camera) =>
@@ -45,6 +70,8 @@ function DeviceManage() {
     ]);
     setIsRegisterOpen(false);
 
+    // 새로 등록한 카메라가 보이도록 마지막 페이지로 이동
+    setCurrentPage(Math.ceil((cameras.length + 1) / camerasPerPage));
   }
 
   /*
@@ -84,7 +111,7 @@ function DeviceManage() {
           </thead>
 
           <tbody>
-            {cameras.map((camera) => (
+            {currentCameras.map((camera) => (
               <tr key={camera.id}>
                 <td>
                   <EditableCameraName
@@ -141,6 +168,15 @@ function DeviceManage() {
           </tbody>
         </table>
       </div>
+
+      <Pagination
+        currentPage={safePage}
+        totalPages={totalPages}
+        onPageChange={handlePageChange}
+        totalItems={cameras.length}
+        itemLabel="대"
+      />
+
       {isRegisterOpen && (
         <CameraRegisterModal
           onClose={() => setIsRegisterOpen(false)}

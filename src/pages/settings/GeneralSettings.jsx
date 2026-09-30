@@ -8,7 +8,7 @@ function GeneralSettings() {
   const [settings, setSettings] = useState({
     autoRefresh: false,
     showOfflineBoards: true,
-    defaultChannel: 4
+    defaultChannel: 6
   });
 
   useEffect(() => {
@@ -123,7 +123,7 @@ function handleChannelChange(e) {
         >
           <option value="2">2채널</option>
           <option value="4">4채널</option>
-          <option value="8">8채널</option>
+          <option value="6">6채널</option>
         </select>
       </div>
     </div>

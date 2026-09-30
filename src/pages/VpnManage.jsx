@@ -7,6 +7,7 @@ import VpnSummary from "../components/vpn/VpnSummary";
 import VpnDeviceTable from "../components/vpn/VpnDeviceTable";
 import VpnPeerStatus from "../components/vpn/VpnPeerStatus";
 import { useVpn } from "../context/VpnContext";
+import VpnDeviceDetailModal from "../components/vpn/VpnDeviceDetailModal";
 // import { connectClientVpn, getVpnDevices } from "../api/vpnApi";  // 서버 연결 후 주석 해제
 import "./VpnManage.css";
 
@@ -22,6 +23,9 @@ function VpnManage() {
         new Date().toLocaleString()
     );
     const devicesPerPage = 8;
+
+    // WEB-F-054 상세 정보 모달
+    const [ selectedDevice, setSelectedDevice ] = useState(null);
 
     /* 상태 요약 */
     const totalDevices = devices.length;
@@ -247,7 +251,8 @@ function VpnManage() {
           <VpnDeviceTable
             devices={currentDevices}
             onToggle={handleToggle}
-            onConnection={handleConnection}
+            onRecoveryRequest={handleConnection}
+            onSelect={setSelectedDevice}
           />
 
           <Pagination
@@ -258,6 +263,13 @@ function VpnManage() {
             itemLabel="대"
           />
         </section>
+
+        {selectedDevice && (
+          <VpnDeviceDetailModal
+            device={selectedDevice}
+            onClose={() => setSelectedDevice(null)}
+          />
+        )}
       </main>
     );
 }

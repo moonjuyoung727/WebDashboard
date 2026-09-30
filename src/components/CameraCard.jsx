@@ -43,6 +43,9 @@ function CameraCard({ camera }) {
         onClick={() => navigate(`/Monitoring/${camera.id}`)}
       >
           Video ...
+
+          {/* WEB-F-012 멀티뷰는 저해상도 스트림 재생 — 서버 연결 후 getLowResStreams() 응답의 streamUrl 사용 */}
+          <span className="stream-quality-badge">SD</span>
       </div>
 
       <div className="camera-info">

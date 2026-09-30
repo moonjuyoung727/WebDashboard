@@ -4,6 +4,8 @@ import { useParams, useNavigate } from "react-router-dom";
 import "./Monitoring.css";
 import { cameras } from "../data/cameras";
 import EditableCameraName from "../components/EditableCameraName";
+import PrivacyZoneModal from "../components/privacy/PrivacyZoneModal";
+import { getZones } from "../data/privacyZoneStore";
 
 function Monitoring() {
   const { cameraId } = useParams();
@@ -22,11 +24,18 @@ function Monitoring() {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [streamKey, setStreamKey] = useState(0);
 
+  // 프라이버시 존 (WEB-F-024)
+  const [isPrivacyOpen, setIsPrivacyOpen] = useState(false);
+  const [privacyZones, setPrivacyZones] = useState(() =>
+    getZones(Number(cameraId))
+  );
+
 
   // URL에서 다른 카메라로 이동했을 때 정보 갱신
   useEffect(() => {
     setCamera(originalCamera || null);
     setIsEditingName(false);
+    setPrivacyZones(getZones(Number(cameraId)));
   }, [cameraId]);
 
 
@@ -176,6 +185,23 @@ function Monitoring() {
             <div className="video-placeholder">
               Video Stream
             </div>
+
+            {/* 프라이버시 존 마스킹 표시 */}
+            {privacyZones
+              .filter((zone) => zone.enabled)
+              .map((zone) => (
+                <div
+                  key={zone.id}
+                  className="privacy-mask"
+                  style={{
+                    left: `${zone.x * 100}%`,
+                    top: `${zone.y * 100}%`,
+                    width: `${zone.width * 100}%`,
+                    height: `${zone.height * 100}%`,
+                  }}
+                  title={zone.name}
+                />
+              ))}
 
 
             {/* 좌측 상단 LIVE + 현재시간 */}
@@ -386,9 +412,44 @@ function Monitoring() {
             </span>
           </div>
 
+
+          {/* 프라이버시 존 (WEB-F-024) */}
+
+          <div className="info-section-title">
+            프라이버시 존
+          </div>
+
+          <div className="info-row">
+            <span className="info-label">
+              설정된 영역
+            </span>
+
+            <span className="info-value">
+              {privacyZones.length}개
+              {" "}
+              (활성 {privacyZones.filter((zone) => zone.enabled).length}개)
+            </span>
+          </div>
+
+          <button
+            type="button"
+            className="privacy-zone-button"
+            onClick={() => setIsPrivacyOpen(true)}
+          >
+            ▣ 프라이버시 존 설정
+          </button>
+
         </aside>
 
       </div>
+
+      {isPrivacyOpen && (
+        <PrivacyZoneModal
+          camera={camera}
+          onClose={() => setIsPrivacyOpen(false)}
+          onSaved={setPrivacyZones}
+        />
+      )}
 
     </main>
   );

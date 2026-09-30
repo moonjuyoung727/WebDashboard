@@ -18,6 +18,8 @@ import Settings from "./pages/settings/Settings";
 import GeneralSettings from "./pages/settings/GeneralSettings";
 import NotificationSettings from "./pages/settings/NotificationSettings";
 import AccountSettings from "./pages/settings/AccountSettings";
+import StorageSettings from "./pages/settings/StorageSettings";
+import PrivacyZoneSettings from "./pages/settings/PrivacyZoneSettings";
 
 import Dashboard from "./pages/Dashboard";
 import Multiview from "./pages/Multiview";
@@ -102,6 +104,8 @@ function App() {
               <Route path="notifications" element={<NotificationSettings />} />
               <Route path="account" element={<AccountSettings />} />
               <Route path="subscription" element={<SubscriptionManagement />} />
+              <Route path="storage" element={<StorageSettings />} />
+              <Route path="privacy-zones" element={<PrivacyZoneSettings />} />
             </Route>
 
           </Route>

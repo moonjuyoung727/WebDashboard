@@ -37,6 +37,24 @@ function Settings() {
         </NavLink>
 
         <NavLink
+          to="/settings/storage"
+          className={({ isActive }) =>
+            isActive ? "settings-menu-item active" : "settings-menu-item"
+          }
+        >
+          저장소 설정
+        </NavLink>
+
+        <NavLink
+          to="/settings/privacy-zones"
+          className={({ isActive }) =>
+            isActive ? "settings-menu-item active" : "settings-menu-item"
+          }
+        >
+          프라이버시 존
+        </NavLink>
+
+        <NavLink
           to="/settings/account"
           className={({ isActive }) =>
             isActive ? "settings-menu-item active" : "settings-menu-item"

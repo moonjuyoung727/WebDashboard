@@ -264,3 +264,13 @@
 .vpn-recovery-button.request:active {
   background-color: var(--pressed);
 }
+
+
+/* 행 클릭 → 상세 정보 (WEB-F-054) */
+.vpn-row-clickable {
+  cursor: pointer;
+}
+
+.vpn-row-clickable:hover td {
+  background-color: var(--hover);
+}

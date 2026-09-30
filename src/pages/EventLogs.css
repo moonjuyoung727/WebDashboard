@@ -618,3 +618,54 @@
   background-color: transparent;
   box-shadow: var(--inset);
 }
+
+
+/* =========================
+   일괄 상태 변경 (WEB-F-033)
+========================= */
+
+.event-check-cell {
+  width: 44px;
+  text-align: center;
+}
+
+.event-check-cell input {
+  width: 16px;
+  height: 16px;
+
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+
+.event-bulk-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+
+  margin-top: 16px;
+  padding: 10px 16px;
+
+  box-shadow: var(--inset);
+  border-radius: var(--radius-md);
+
+  font-size: 13px;
+}
+
+.event-bulk-bar strong {
+  margin-right: 8px;
+}
+
+.event-bulk-clear {
+  margin-left: auto;
+
+  background: none;
+  border: none;
+  color: var(--text-muted);
+
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.snapshot-section img {
+  cursor: zoom-in;
+}

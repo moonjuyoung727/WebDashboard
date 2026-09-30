@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import { Outlet, useLocation, useNavigate } from "react-router-dom";
 import Sidebar from "../components/Sidebar";
+import VpnAlertBanner from "../components/vpn/VpnAlertBanner";
 import recentNotifications from "../data/recentNotifications.js";
 // import { logout } from "../api/authApi";  // 백엔드 연결 시 주석 해제
 import "./MainLayout.css";
@@ -391,6 +392,9 @@ function MainLayout() {
         isOpen={isSidebarOpen}
         onClose={() => setIsSidebarOpen(false)}
       />
+
+      {/* Client VPN 연결 이상 시 재연결 안내 (WEB-F-050) */}
+      <VpnAlertBanner />
 
       <Outlet />
 

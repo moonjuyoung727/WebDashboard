@@ -51,3 +51,24 @@
 .status.offline {
     color: var(--danger);
 }
+
+
+/* WEB-F-012 저해상도 스트림 표시 */
+.camera-video {
+    position: relative;
+}
+
+.stream-quality-badge {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+
+    padding: 2px 6px;
+
+    background-color: rgba(0, 0, 0, 0.6);
+    color: var(--text-muted);
+
+    border-radius: 4px;
+    font-size: 10px;
+    letter-spacing: 0.5px;
+}

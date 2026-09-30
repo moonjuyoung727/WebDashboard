@@ -1,5 +1,8 @@
 import { useState } from "react";
 // import { updateAutoRenew } from "../../api/settingsApi";  // 서버 연결 후 주석 해제
+// import { getSubscription, changeSubscriptionPlan } from "../../api/settingsApi";  // 서버 연결 후 주석 해제 (WEB-F-061)
+import PlanChangeModal from "../../components/settings/PlanChangeModal";
+import PaymentMethods from "../../components/settings/PaymentMethods";
 
 function SubscriptionSettings() {
   const [subscription, setSubscription] = useState({
@@ -8,6 +11,18 @@ function SubscriptionSettings() {
     nextPaymentDate: "2026-09-10",
     autoRenew: true
   });
+
+  // WEB-F-061 요금제 변경 모달
+  const [isPlanModalOpen, setIsPlanModalOpen] = useState(false);
+
+  function handlePlanChange(plan) {
+    setSubscription((prev) => ({
+      ...prev,
+      plan: plan.name
+    }));
+
+    // 서버 연결 후: await changeSubscriptionPlan(plan.id);
+  }
 
   // 서버 연결 전 임시 상태 변경
   function handleAutoRenew() {
@@ -107,10 +122,24 @@ function SubscriptionSettings() {
         <button
           type="button"
           className="settings-button"
+          onClick={() => setIsPlanModalOpen(true)}
         >
           요금제 변경
         </button>
       </div>
+
+
+      {/* WEB-F-061 결제 수단 관리 */}
+      <PaymentMethods />
+
+
+      {isPlanModalOpen && (
+        <PlanChangeModal
+          currentPlan={subscription.plan}
+          onClose={() => setIsPlanModalOpen(false)}
+          onConfirm={handlePlanChange}
+        />
+      )}
 
     </div>
   );

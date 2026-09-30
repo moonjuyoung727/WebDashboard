@@ -1,6 +1,5 @@
 import "./EventLogs.css";
 import Pagination from "../components/Pagination";
-import PageSizeDropDown from "../components/PageSizeDropdown";
 
 import { useEffect, useMemo, useState } from "react";
 
@@ -17,12 +16,15 @@ import {
 
 import { eventLogs as initialEventLogs } from "../data/eventLogs";
 // import { getEvents } from "../api/eventApi";  // 서버 연결 후 주석 해제
+// import { bulkUpdateEventStatus } from "../api/eventApi";  // 서버 연결 후 주석 해제 (WEB-F-033)
+import EventMediaModal from "../components/events/EventMediaModal";
+import "../components/Modal.css";
 
 
 function EventLogs() {
   const [events, setEvents] = useState(initialEventLogs);
   const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage, setItemsPerPage] = useState(20);
+  const itemsPerPage = 20;
 
   const [selectedEvent, setSelectedEvent] = useState(null);
 
@@ -32,6 +34,12 @@ function EventLogs() {
   const [searchTerm, setSearchTerm] = useState("");
 
   const [memo, setMemo] = useState("");
+
+  // WEB-F-033 일괄 상태 변경용 선택 목록
+  const [checkedIds, setCheckedIds] = useState([]);
+
+  // WEB-F-032 미디어 상세 보기 (snapshot | video)
+  const [mediaTab, setMediaTab] = useState(null);
 
   /*
   const [events, setEvents] = useState([]);
@@ -146,6 +154,56 @@ function EventLogs() {
       ...prev,
       memo,
     }));
+  }
+
+
+  /* ---------- WEB-F-033 일괄 상태 변경 ---------- */
+
+  const currentPageIds = currentEvents.map((event) => event.id);
+
+  const isAllChecked =
+    currentPageIds.length > 0 &&
+    currentPageIds.every((id) => checkedIds.includes(id));
+
+  function handleToggleCheck(eventId) {
+    setCheckedIds((prev) =>
+      prev.includes(eventId)
+        ? prev.filter((id) => id !== eventId)
+        : [...prev, eventId]
+    );
+  }
+
+  function handleToggleAll() {
+    setCheckedIds((prev) =>
+      isAllChecked
+        ? prev.filter((id) => !currentPageIds.includes(id))
+        : [...new Set([...prev, ...currentPageIds])]
+    );
+  }
+
+  function handleBulkStatusChange(status) {
+    setEvents((prev) =>
+      prev.map((event) =>
+        checkedIds.includes(event.id)
+          ? { ...event, status }
+          : event
+      )
+    );
+
+    if (selectedEvent && checkedIds.includes(selectedEvent.id)) {
+      setSelectedEvent((prev) => ({ ...prev, status }));
+    }
+
+    setCheckedIds([]);
+
+    /* 서버 연결 후
+    try {
+      const result = await bulkUpdateEventStatus(checkedIds, status);
+      // result.updatedIds 기준으로 상태 반영
+    } catch (error) {
+      console.error(error);
+    }
+    */
   }
 
 
@@ -272,6 +330,38 @@ function EventLogs() {
       </div>
 
 
+      {/* WEB-F-033 일괄 처리 바 */}
+      {checkedIds.length > 0 && (
+        <div className="event-bulk-bar">
+          <strong>{checkedIds.length}건 선택됨</strong>
+
+          <button
+            type="button"
+            className="btn small"
+            onClick={() => handleBulkStatusChange("confirmed")}
+          >
+            확인 완료로 변경
+          </button>
+
+          <button
+            type="button"
+            className="btn small"
+            onClick={() => handleBulkStatusChange("unconfirmed")}
+          >
+            미확인으로 변경
+          </button>
+
+          <button
+            type="button"
+            className="event-bulk-clear"
+            onClick={() => setCheckedIds([])}
+          >
+            선택 해제
+          </button>
+        </div>
+      )}
+
+
       {/* 테이블 */}
       <div className="event-table-wrapper">
 
@@ -279,6 +369,14 @@ function EventLogs() {
 
           <thead>
             <tr>
+              <th className="event-check-cell">
+                <input
+                  type="checkbox"
+                  checked={isAllChecked}
+                  onChange={handleToggleAll}
+                  aria-label="현재 페이지 전체 선택"
+                />
+              </th>
               <th>시간</th>
               <th>카메라</th>
               <th>이벤트</th>
@@ -297,6 +395,17 @@ function EventLogs() {
                 }
                 onClick={() => handleSelectEvent(event)}
               >
+                <td
+                  className="event-check-cell"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <input
+                    type="checkbox"
+                    checked={checkedIds.includes(event.id)}
+                    onChange={() => handleToggleCheck(event.id)}
+                    aria-label={`${event.id}번 이벤트 선택`}
+                  />
+                </td>
                 <td>{formatDateTime(event.occurredAt)}</td>
 
                 <td>
@@ -335,10 +444,6 @@ function EventLogs() {
           totalPages={totalPages}
           onPageChange={setCurrentPage}
           totalItems={filteredEvents.length}
-        />
-        <PageSizeDropDown
-          value={itemsPerPage}
-          onChange={setItemsPerPage}
         />
       </div>
 
@@ -402,9 +507,13 @@ function EventLogs() {
               <img
                 src={selectedEvent.snapshotUrl}
                 alt="이벤트 스냅샷"
+                onClick={() => setMediaTab("snapshot")}
               />
 
-              <button className="video-button">
+              <button
+                className="video-button"
+                onClick={() => setMediaTab("video")}
+              >
                 <FiPlayCircle />
                 영상 보기
               </button>
@@ -475,6 +584,16 @@ function EventLogs() {
           </div>
 
         </aside>
+      )}
+
+
+      {/* WEB-F-032 스냅샷 / 영상 상세 보기 */}
+      {selectedEvent && mediaTab && (
+        <EventMediaModal
+          event={selectedEvent}
+          initialTab={mediaTab}
+          onClose={() => setMediaTab(null)}
+        />
       )}
 
     </section>

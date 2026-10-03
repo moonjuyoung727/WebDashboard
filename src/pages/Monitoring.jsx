@@ -1,7 +1,30 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 
+import {
+  FiVideo,
+  FiWifi,
+  FiWifiOff,
+  FiShield,
+  FiShieldOff,
+  FiInfo,
+  FiEdit2,
+  FiTag,
+  FiMapPin,
+  FiCpu,
+  FiHash,
+  FiBox,
+  FiLayers,
+  FiActivity,
+  FiClock,
+  FiTrendingUp,
+  FiEyeOff,
+  FiGrid,
+  FiRefreshCw,
+} from "react-icons/fi";
+
 import "./Monitoring.css";
+import { VPN_STATUS_META } from "../components/charts/chartColors";
 import { cameras } from "../data/cameras";
 import EditableCameraName from "../components/EditableCameraName";
 import PrivacyZoneModal from "../components/privacy/PrivacyZoneModal";
@@ -115,6 +138,11 @@ function Monitoring() {
   const isVpnConnected =
     camera.vpnStatus === "connected";
 
+  // VPN 상태 이름은 모든 화면 공통 (정상 / 연결 끊김 / 오류)
+  const vpnStatusLabel =
+    VPN_STATUS_META[camera.vpnStatus]?.label ??
+    (isVpnConnected ? VPN_STATUS_META.connected.label : VPN_STATUS_META.disconnected.label);
+
 
   return (
     <main className="monitoring-page">
@@ -123,9 +151,14 @@ function Monitoring() {
       <div className="monitoring-header">
 
         <div className="monitoring-title-area">
+          <span className="monitoring-title-icon">
+            <FiVideo />
+          </span>
+
           <h2>{camera.name}</h2>
 
           <span className="live-badge">
+            <span className="live-dot" />
             LIVE
           </span>
 
@@ -134,7 +167,7 @@ function Monitoring() {
               isOnline ? "connected" : "disconnected"
             }`}
           >
-            <span className="status-dot" />
+            {isOnline ? <FiWifi /> : <FiWifiOff />}
             {isOnline ? "Online" : "Offline"}
           </span>
 
@@ -145,10 +178,8 @@ function Monitoring() {
                 : "disconnected"
             }`}
           >
-            <span className="status-dot" />
-            {isVpnConnected
-              ? "VPN Connected"
-              : "VPN Disconnected"}
+            {isVpnConnected ? <FiShield /> : <FiShieldOff />}
+            VPN {vpnStatusLabel}
           </span>
         </div>
 
@@ -183,6 +214,7 @@ function Monitoring() {
             */}
 
             <div className="video-placeholder">
+              <FiVideo />
               Video Stream
             </div>
 
@@ -209,6 +241,7 @@ function Monitoring() {
             <div className="video-time">
 
               <span className="video-live">
+                <span className="live-dot" />
                 LIVE
               </span>
 
@@ -229,11 +262,11 @@ function Monitoring() {
               <span
                 className={
                   isRefreshing
-                    ? "refresh-icon rotating"
-                    : "refresh-icon"
+                    ? "stream-refresh-icon rotating"
+                    : "stream-refresh-icon"
                 }
               >
-                ↻
+                <FiRefreshCw />
               </span>
 
               {isRefreshing
@@ -252,7 +285,10 @@ function Monitoring() {
 
           <div className="info-panel-header">
 
-            <h3>카메라 정보</h3>
+            <h3>
+              <FiInfo />
+              카메라 정보
+            </h3>
 
             <button
               type="button"
@@ -262,7 +298,8 @@ function Monitoring() {
               aria-hidden={isEditingName}
               tabIndex={isEditingName ? -1 : 0}
             >
-              ✎ 이름 수정
+              <FiEdit2 />
+              이름 수정
             </button>
 
           </div>
@@ -273,6 +310,7 @@ function Monitoring() {
           <div className="info-row">
 
             <span className="info-label">
+              <FiTag />
               카메라 이름
             </span>
 
@@ -289,6 +327,7 @@ function Monitoring() {
 
           <div className="info-row">
             <span className="info-label">
+              <FiMapPin />
               설치 위치
             </span>
 
@@ -300,6 +339,7 @@ function Monitoring() {
 
           <div className="info-row">
             <span className="info-label">
+              <FiCpu />
               보드 ID
             </span>
 
@@ -311,6 +351,7 @@ function Monitoring() {
 
           <div className="info-row">
             <span className="info-label">
+              <FiHash />
               시리얼 번호
             </span>
 
@@ -324,6 +365,7 @@ function Monitoring() {
 
           <div className="info-row">
             <span className="info-label">
+              <FiBox />
               모델
             </span>
 
@@ -335,6 +377,7 @@ function Monitoring() {
 
           <div className="info-row">
             <span className="info-label">
+              <FiLayers />
               펌웨어 버전
             </span>
 
@@ -347,12 +390,14 @@ function Monitoring() {
           {/* 상태 정보 */}
 
           <div className="info-section-title">
+            <FiActivity />
             상태 정보
           </div>
 
 
           <div className="info-row">
             <span className="info-label">
+              <FiWifi />
               온라인 상태
             </span>
 
@@ -372,6 +417,7 @@ function Monitoring() {
 
           <div className="info-row">
             <span className="info-label">
+              <FiShield />
               VPN 상태
             </span>
 
@@ -384,15 +430,14 @@ function Monitoring() {
             >
               <span className="status-dot" />
 
-              {isVpnConnected
-                ? "Connected"
-                : "Disconnected"}
+              {vpnStatusLabel}
             </span>
           </div>
 
 
           <div className="info-row">
             <span className="info-label">
+              <FiClock />
               마지막 접속 시간
             </span>
 
@@ -404,6 +449,7 @@ function Monitoring() {
 
           <div className="info-row">
             <span className="info-label">
+              <FiTrendingUp />
               업타임
             </span>
 
@@ -416,11 +462,13 @@ function Monitoring() {
           {/* 프라이버시 존 (WEB-F-024) */}
 
           <div className="info-section-title">
+            <FiEyeOff />
             프라이버시 존
           </div>
 
           <div className="info-row">
             <span className="info-label">
+              <FiGrid />
               설정된 영역
             </span>
 
@@ -436,7 +484,8 @@ function Monitoring() {
             className="privacy-zone-button"
             onClick={() => setIsPrivacyOpen(true)}
           >
-            ▣ 프라이버시 존 설정
+            <FiEyeOff />
+            프라이버시 존 설정
           </button>
 
         </aside>

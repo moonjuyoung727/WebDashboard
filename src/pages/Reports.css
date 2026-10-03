@@ -1,12 +1,36 @@
-.reports-page {
+/* =========================
+   한 화면 레이아웃
+   통계 및 리포트에서만 레이아웃을 뷰포트 높이로 고정하고
+   차트 카드가 남는 높이를 나눠서 채움 (자세한 내용은 카드를 눌러 상세 보기)
+========================= */
+
+.main-layout:has(> .reports-page) {
+  height: 100vh;
+
   display: flex;
   flex-direction: column;
-  gap: 22px;
+}
 
-  padding: 10px 30px 40px;
+.main-layout:has(> .reports-page) > :not(.reports-page) {
+  flex-shrink: 0;
+}
+
+.reports-page {
+  flex: 1;
+  min-height: 560px;
+
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+
+  padding: 0 30px 20px;
   box-sizing: border-box;
 
   color: var(--accent);
+}
+
+.reports-page > * {
+  flex-shrink: 0;
 }
 
 
@@ -18,32 +42,37 @@
   display: flex;
   align-items: center;
   flex-wrap: wrap;
-  gap: 12px;
+  gap: 10px;
 
-  padding: 16px 20px;
+  padding: 10px 16px;
 
   box-shadow: var(--raised);
   border-radius: var(--radius-lg);
 }
 
+.report-filter .field-select,
+.report-filter .btn {
+  height: 34px;
+}
+
 .report-quick {
   display: flex;
-  gap: 4px;
+  gap: 2px;
 
-  padding: 4px;
+  padding: 3px;
 
   box-shadow: var(--inset);
   border-radius: var(--radius-md);
 }
 
 .report-quick button {
-  padding: 7px 12px;
+  padding: 5px 12px;
 
   background: none;
   color: var(--text-muted);
 
   border: none;
-  border-radius: var(--radius-sm);
+  border-radius: 9px;
 
   font-size: 12px;
   cursor: pointer;
@@ -59,10 +88,8 @@
   display: flex;
   align-items: center;
   gap: 8px;
-}
 
-.report-dates input {
-  color-scheme: dark;
+  color: var(--text-muted);
 }
 
 .report-download {
@@ -73,9 +100,9 @@
 }
 
 .report-caption {
-  margin: -8px 0 0 4px;
   font-size: 12px;
   color: var(--text-muted);
+  white-space: nowrap;
 }
 
 .report-error {
@@ -84,128 +111,231 @@
 
 
 /* =========================
-   카드
+   요약 타일 (누르면 상세 보기)
 ========================= */
 
-.report-card {
-  padding: 20px 22px;
-
-  box-shadow: var(--raised);
-  border-radius: var(--radius-lg);
-
-  min-width: 0;
+.report-kpi-row {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 14px;
 }
 
-.report-card h3 {
-  margin: 0 0 16px;
+.report-kpi {
+  min-width: 0;
+
+  display: flex;
+  align-items: center;
+  gap: 12px;
+
+  padding: 12px 14px;
+
+  background-color: var(--bg);
+  color: var(--accent);
+
+  border: none;
+  box-shadow: var(--raised);
+  border-radius: var(--radius-md);
+
+  text-align: left;
+  cursor: pointer;
+}
+
+.report-kpi:hover {
+  background-color: var(--hover);
+}
+
+.report-kpi-icon {
+  width: 34px;
+  height: 34px;
+  flex-shrink: 0;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  box-shadow: var(--inset);
+  border-radius: var(--radius-sm);
+
   font-size: 15px;
 }
 
-.report-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 22px;
+.report-kpi.online .report-kpi-icon {
+  color: var(--success);
 }
 
-.report-status-row {
-  display: grid;
-  grid-template-columns: 1fr 1fr 1.2fr;
-  gap: 22px;
+.report-kpi.vpn .report-kpi-icon {
+  color: var(--danger);
 }
 
-.status-headline {
-  display: flex;
-  align-items: baseline;
-  gap: 10px;
+.report-kpi-text {
+  flex: 1;
+  min-width: 0;
 
-  margin-bottom: 14px;
-}
-
-.status-headline strong {
-  font-size: 30px;
-  color: #fff;
-}
-
-.status-headline span {
-  font-size: 12px;
-  color: var(--text-muted);
-}
-
-
-/* 누적 막대 */
-
-.stacked-track {
-  height: 12px;
-
-  display: flex;
-  gap: 2px;
-
-  border-radius: 6px;
-  overflow: hidden;
-  box-shadow: var(--inset);
-}
-
-.stacked-segment {
-  height: 100%;
-}
-
-.stacked-legend {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 16px;
-
-  margin: 12px 0 0;
-  padding: 0;
-  list-style: none;
-
-  font-size: 12px;
-}
-
-.stacked-legend li {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.stacked-legend strong {
-  color: #fff;
-}
-
-
-/* KPI */
-
-.report-kpis {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 16px 20px;
-}
-
-.report-kpis div {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 4px;
 }
 
-.report-kpis span {
-  font-size: 12px;
+.report-kpi-label {
+  font-size: 11px;
   color: var(--text-muted);
+
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-.report-kpis strong {
-  font-size: 24px;
+.report-kpi strong {
+  font-size: 20px;
+  line-height: 1.1;
   color: #fff;
   font-variant-numeric: tabular-nums;
+
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-.report-kpis strong.kpi-text {
-  font-size: 16px;
+.report-kpi strong.text {
+  font-size: 15px;
 }
 
-.report-kpis small {
-  margin-left: 4px;
-  font-size: 12px;
+.report-kpi strong small {
+  margin-left: 3px;
+  font-size: 11px;
   font-weight: 400;
   color: var(--text-muted);
+}
+
+
+/* =========================
+   차트 카드 (2 x 2, 남는 높이를 나눠 씀)
+========================= */
+
+.report-main {
+  flex: 1;
+  flex-shrink: 1;
+  min-height: 0;
+
+  display: grid;
+  grid-template-columns: minmax(0, 1.7fr) minmax(0, 1fr);
+  grid-template-rows: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.report-card {
+  min-width: 0;
+  min-height: 0;
+
+  display: flex;
+  flex-direction: column;
+
+  padding: 14px 18px;
+  box-sizing: border-box;
+
+  box-shadow: var(--raised);
+  border-radius: var(--radius-lg);
+}
+
+.report-card.clickable {
+  cursor: pointer;
+  transition: background-color 0.18s ease;
+}
+
+.report-card.clickable:hover {
+  background-color: var(--hover);
+}
+
+.report-card-header {
+  flex-shrink: 0;
+
+  display: flex;
+  align-items: center;
+  gap: 10px;
+
+  margin-bottom: 10px;
+}
+
+.report-card-header h3 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+
+  margin: 0;
+  font-size: 14px;
+}
+
+.report-card-header h3 svg {
+  color: var(--text-muted);
+}
+
+.report-card-meta {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+/* 마우스를 올리면 진하게 → 누를 수 있다는 표시 */
+.report-card-open {
+  margin-left: auto;
+
+  display: flex;
+  align-items: center;
+  gap: 5px;
+
+  font-size: 11px;
+  color: var(--text-muted);
+  opacity: 0.6;
+
+  transition: opacity 0.18s ease, color 0.18s ease;
+}
+
+.report-card.clickable:hover .report-card-open,
+.report-card.clickable:focus-visible .report-card-open {
+  color: var(--accent);
+  opacity: 1;
+}
+
+/* 차트가 카드에서 남는 높이를 채움 (높이를 재서 차트에 넘김) */
+.report-chart-body {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+/* 유형별 도넛: 가운데 정렬, 범례 촘촘하게 */
+.report-card.type .report-chart-body {
+  display: flex;
+  align-items: center;
+}
+
+.report-card.type .donut-chart {
+  flex: 1;
+  gap: 22px;
+}
+
+.report-card.type .chart-legend {
+  gap: 0;
+}
+
+.report-card.type .chart-legend li {
+  padding: 3px 6px;
+  font-size: 12px;
+}
+
+/* 순위: 카드에서는 촘촘하게 */
+.report-card.camera .rank-bars {
+  gap: 4px;
+}
+
+.report-card.camera .rank-bars li {
+  height: 36px;
+  padding: 0 6px;
+  box-sizing: border-box;
+}
+
+.report-card.camera .rank-text {
+  margin-bottom: 4px;
+  font-size: 12px;
 }
 
 

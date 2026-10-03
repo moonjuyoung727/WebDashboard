@@ -33,9 +33,35 @@
 }
 
 .register-modal-header h2 {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+
   margin: 0 0 6px;
 
   font-size: 22px;
+}
+
+.register-title-icon {
+  width: 32px;
+  height: 32px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  box-shadow: var(--inset);
+  border-radius: var(--radius-sm);
+
+  font-size: 15px;
+}
+
+.register-label-icon {
+  margin-right: 6px;
+
+  color: var(--text-muted);
+  font-size: 13px;
+  vertical-align: -1px;
 }
 
 .register-modal-header p {
@@ -174,6 +200,18 @@
 
   color: var(--danger);
   font-size: 13px;
+}
+
+.register-field input.mac-input {
+  font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New', monospace;
+  letter-spacing: 1px;
+}
+
+.field-hint {
+  margin: 0;
+
+  color: var(--text-muted);
+  font-size: 11px;
 }
 
 .field-error-message {

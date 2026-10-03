@@ -10,9 +10,6 @@ import MainLayout from "./layouts/MainLayout";
 import ProtectedRoute from "./routes/ProtectedRoute";
 
 import Login from "./pages/auth/Login";
-import FindId from "./pages/auth/FindId";
-import FindPw from "./pages/auth/FindPw";
-import Signup from "./pages/auth/Signup";
 
 import Settings from "./pages/settings/Settings";
 import GeneralSettings from "./pages/settings/GeneralSettings";
@@ -43,12 +40,12 @@ function App() {
           element={<Navigate to="/login" replace />}
         />
 
-        {/* 로그인 전 */}
+        {/* 로그인 전: 같은 카드가 주소에 맞춰 로그인 / 회원가입 / 찾기로 바뀐다 */}
         <Route element={<AuthLayout />}>
           <Route path="/login" element={<Login />} />
-          <Route path="/find-id" element={<FindId />} />
-          <Route path="/find-pw" element={<FindPw />} />
-          <Route path="/signup" element={<Signup />} />
+          <Route path="/find-id" element={<Login />} />
+          <Route path="/find-pw" element={<Login />} />
+          <Route path="/signup" element={<Login />} />
         </Route>
 
         {/* 로그인 후 */}

@@ -78,7 +78,7 @@ function PrivacyZoneSettings() {
   }
 
   return (
-    <div className="settings-section">
+    <div className="settings-section pz-settings-page">
       <h2>프라이버시 존 관리</h2>
 
       <div className="pz-settings">

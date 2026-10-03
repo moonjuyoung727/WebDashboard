@@ -1,5 +1,8 @@
 import "./EventLogs.css";
 import Pagination from "../components/Pagination";
+import DatePicker from "../components/DatePicker";
+import useFitPagination from "../hooks/useFitPagination";
+import { EVENT_TYPE_META } from "../components/charts/chartColors";
 
 import { useEffect, useMemo, useState } from "react";
 
@@ -12,6 +15,19 @@ import {
   FiVideo,
   FiX,
   FiPlayCircle,
+  FiCalendar,
+  FiClock,
+  FiTag,
+  FiCheckCircle,
+  FiAlertCircle,
+  FiCheckSquare,
+  FiFileText,
+  FiAlignLeft,
+  FiImage,
+  FiEdit3,
+  FiSave,
+  FiShieldOff,
+  FiVideoOff,
 } from "react-icons/fi";
 
 import { eventLogs as initialEventLogs } from "../data/eventLogs";
@@ -21,10 +37,44 @@ import EventMediaModal from "../components/events/EventMediaModal";
 import "../components/Modal.css";
 
 
+// 기간 선택 버튼 (days: 오늘을 포함해 며칠 전부터인지, 대시보드 기간 선택과 같은 기준)
+const PERIODS = [
+  { key: "today", label: "오늘", days: 0 },
+  { key: "7d", label: "최근 7일", days: 6 },
+  { key: "30d", label: "최근 30일", days: 29 },
+  { key: "60d", label: "최근 60일", days: 59 },
+];
+
+const pad = (value) => String(value).padStart(2, "0");
+
+function toDateValue(date) {
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+}
+
+/*
+  선택한 기간 → { from, to } ("YYYY-MM-DD", 양 끝 포함)
+  서버 연결 후에는 이 값을 조회 조건으로 넘기면 됨  예) getEvents({ from, to }) → /api/events?from=…&to=…
+*/
+function getPeriodRange(period, customDate) {
+  if (period === "custom" && customDate) {
+    return { from: customDate, to: customDate };
+  }
+
+  const days = PERIODS.find((item) => item.key === period)?.days ?? 0;
+
+  const today = new Date();
+  const start = new Date(today);
+  start.setDate(today.getDate() - days);
+
+  return { from: toDateValue(start), to: toDateValue(today) };
+}
+
+
 function EventLogs() {
   const [events, setEvents] = useState(initialEventLogs);
-  const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 20;
+
+  const [period, setPeriod] = useState("today");
+  const [customDate, setCustomDate] = useState("");
 
   const [selectedEvent, setSelectedEvent] = useState(null);
 
@@ -58,18 +108,14 @@ function EventLogs() {
   }, []);
   */
 
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [
-    cameraFilter,
-    typeFilter,
-    statusFilter,
-    searchTerm,
-    itemsPerPage,
-  ]);
-
   const filteredEvents = useMemo(() => {
+    const { from, to } = getPeriodRange(period, customDate);
+
     return events.filter((event) => {
+      // 발생 날짜가 선택한 기간 안에 있는지 (문자열 비교, YYYY-MM-DD)
+      const eventDate = event.occurredAt.slice(0, 10);
+      const matchPeriod = eventDate >= from && eventDate <= to;
+
       const matchCamera =
         cameraFilter === "all" ||
         String(event.cameraId) === cameraFilter;
@@ -90,6 +136,7 @@ function EventLogs() {
         event.description.toLowerCase().includes(keyword);
 
       return (
+        matchPeriod &&
         matchCamera &&
         matchType &&
         matchStatus &&
@@ -98,22 +145,34 @@ function EventLogs() {
     });
   }, [
     events,
+    period,
+    customDate,
     cameraFilter,
     typeFilter,
     statusFilter,
     searchTerm,
   ]);
 
-  const totalPages = Math.max(
-    1, Math.ceil(filteredEvents.length / itemsPerPage)
-  );
+  // 화면 높이에 들어가는 만큼만 한 페이지에 표시
+  const {
+    areaRef: tableAreaRef,
+    pageItems: currentEvents,
+    page: currentPage,
+    setPage: setCurrentPage,
+    totalPages,
+  } = useFitPagination(filteredEvents);
 
-  const currentEvents = useMemo(() => {
-    const startIndex = (currentPage - 1) * itemsPerPage;
-    const endIndex = startIndex + itemsPerPage;
-
-    return filteredEvents.slice(startIndex, endIndex);
-  }, [filteredEvents, currentPage, itemsPerPage]);
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [
+    period,
+    customDate,
+    cameraFilter,
+    typeFilter,
+    statusFilter,
+    searchTerm,
+    setCurrentPage,
+  ]);
 
   function handleSelectEvent(event) {
     setSelectedEvent(event);
@@ -208,6 +267,8 @@ function EventLogs() {
 
 
   function handleResetFilter() {
+    setPeriod("today");
+    setCustomDate("");
     setCameraFilter("all");
     setTypeFilter("all");
     setStatusFilter("all");
@@ -222,40 +283,60 @@ function EventLogs() {
       <div className="event-toolbar">
 
         <div className="period-filter">
-          <span className="filter-label">기간 선택</span>
+          <span className="filter-label">
+            <FiCalendar />
+            기간 선택
+          </span>
 
-          <button className="period-button active">
-            오늘
-          </button>
+          <div className="period-segment">
+            {PERIODS.map((item) => (
+              <button
+                type="button"
+                key={item.key}
+                className={period === item.key ? "period-button active" : "period-button"}
+                onClick={() => {
+                  setPeriod(item.key);
+                  setCustomDate("");
+                }}
+              >
+                {item.label}
+              </button>
+            ))}
+          </div>
 
-          <button className="period-button">
-            최근 7일
-          </button>
-
-          <button className="period-button">
-            최근 30일
-          </button>
-
-          <button className="period-button">
-            최근 60일
-          </button>
-
-          <input
-            className="date-input"
-            type="date"
+          <DatePicker
+            value={customDate}
+            max={toDateValue(new Date())}
+            placeholder="날짜 직접 선택"
+            active={period === "custom"}
+            onChange={(value) => {
+              setCustomDate(value);
+              setPeriod(value ? "custom" : "today");
+            }}
           />
         </div>
 
 
         <div className="event-search">
+          <FiSearch />
+
           <input
             type="text"
-            placeholder="검색어를 입력하세요."
+            placeholder="카메라 · 위치 · 내용 검색"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
           />
 
-          <FiSearch />
+          {searchTerm && (
+            <button
+              type="button"
+              className="event-search-clear"
+              onClick={() => setSearchTerm("")}
+              aria-label="검색어 지우기"
+            >
+              <FiX />
+            </button>
+          )}
         </div>
 
       </div>
@@ -265,7 +346,10 @@ function EventLogs() {
       <div className="event-filter-row">
 
         <div className="filter-item">
-          <label>카메라 선택</label>
+          <label>
+            <FiVideo />
+            카메라 선택
+          </label>
 
           <select
             value={cameraFilter}
@@ -282,7 +366,10 @@ function EventLogs() {
 
 
         <div className="filter-item">
-          <label>이벤트 종류</label>
+          <label>
+            <FiTag />
+            이벤트 종류
+          </label>
 
           <select
             value={typeFilter}
@@ -306,7 +393,10 @@ function EventLogs() {
 
 
         <div className="filter-item">
-          <label>처리 여부</label>
+          <label>
+            <FiCheckCircle />
+            처리 여부
+          </label>
 
           <select
             value={statusFilter}
@@ -333,13 +423,17 @@ function EventLogs() {
       {/* WEB-F-033 일괄 처리 바 */}
       {checkedIds.length > 0 && (
         <div className="event-bulk-bar">
-          <strong>{checkedIds.length}건 선택됨</strong>
+          <strong>
+            <FiCheckSquare />
+            {checkedIds.length}건 선택됨
+          </strong>
 
           <button
             type="button"
             className="btn small"
             onClick={() => handleBulkStatusChange("confirmed")}
           >
+            <FiCheckCircle />
             확인 완료로 변경
           </button>
 
@@ -348,6 +442,7 @@ function EventLogs() {
             className="btn small"
             onClick={() => handleBulkStatusChange("unconfirmed")}
           >
+            <FiAlertCircle />
             미확인으로 변경
           </button>
 
@@ -363,77 +458,82 @@ function EventLogs() {
 
 
       {/* 테이블 */}
-      <div className="event-table-wrapper">
+      <div className="event-table-area" ref={tableAreaRef}>
+        <div className="event-table-wrapper">
 
-        <table className="event-table">
+          <table className="event-table">
 
-          <thead>
-            <tr>
-              <th className="event-check-cell">
-                <input
-                  type="checkbox"
-                  checked={isAllChecked}
-                  onChange={handleToggleAll}
-                  aria-label="현재 페이지 전체 선택"
-                />
-              </th>
-              <th>시간</th>
-              <th>카메라</th>
-              <th>이벤트</th>
-              <th>상태</th>
-            </tr>
-          </thead>
-
-          <tbody>
-            {currentEvents.map((event) => (
-              <tr
-                key={event.id}
-                className={
-                  selectedEvent?.id === event.id
-                    ? "selected"
-                    : ""
-                }
-                onClick={() => handleSelectEvent(event)}
-              >
-                <td
-                  className="event-check-cell"
-                  onClick={(e) => e.stopPropagation()}
-                >
+            <thead>
+              <tr>
+                <th className="event-check-cell">
                   <input
                     type="checkbox"
-                    checked={checkedIds.includes(event.id)}
-                    onChange={() => handleToggleCheck(event.id)}
-                    aria-label={`${event.id}번 이벤트 선택`}
+                    checked={isAllChecked}
+                    onChange={handleToggleAll}
+                    aria-label="현재 페이지 전체 선택"
                   />
-                </td>
-                <td>{formatDateTime(event.occurredAt)}</td>
-
-                <td>
-                  {event.cameraName} ({event.location})
-                </td>
-
-                <td>
-                  <div className="event-type">
-                    {getEventIcon(event.type)}
-                    {getEventLabel(event.type)}
-                  </div>
-                </td>
-
-                <td>
-                  <span
-                    className={`event-status ${event.status}`}
-                  >
-                    {event.status === "confirmed"
-                      ? "확인 완료"
-                      : "미확인"}
-                  </span>
-                </td>
+                </th>
+                <th><span className="th-label"><FiClock />시간</span></th>
+                <th><span className="th-label"><FiVideo />카메라</span></th>
+                <th><span className="th-label"><FiActivity />이벤트</span></th>
+                <th><span className="th-label"><FiCheckCircle />상태</span></th>
               </tr>
-            ))}
-          </tbody>
+            </thead>
 
-        </table>
+            <tbody>
+              {currentEvents.map((event) => (
+                <tr
+                  key={event.id}
+                  className={
+                    selectedEvent?.id === event.id
+                      ? "selected"
+                      : ""
+                  }
+                  onClick={() => handleSelectEvent(event)}
+                >
+                  <td
+                    className="event-check-cell"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={checkedIds.includes(event.id)}
+                      onChange={() => handleToggleCheck(event.id)}
+                      aria-label={`${event.id}번 이벤트 선택`}
+                    />
+                  </td>
+                  <td>{formatDateTime(event.occurredAt)}</td>
 
+                  <td>
+                    {event.cameraName} ({event.location})
+                  </td>
+
+                  <td>
+                    <div className="event-type">
+                      <EventTypeIcon type={event.type} />
+                      {getEventLabel(event.type)}
+                    </div>
+                  </td>
+
+                  <td>
+                    <span
+                      className={`event-status ${event.status}`}
+                    >
+                      {event.status === "confirmed"
+                        ? <FiCheckCircle />
+                        : <FiAlertCircle />}
+                      {event.status === "confirmed"
+                        ? "확인 완료"
+                        : "미확인"}
+                    </span>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+
+          </table>
+
+        </div>
       </div>
 
 
@@ -453,7 +553,10 @@ function EventLogs() {
         <aside className="event-detail-panel">
 
           <div className="event-detail-header">
-            <h2>이벤트 상세</h2>
+            <h2>
+              <FiFileText />
+              이벤트 상세
+            </h2>
 
             <button
               className="detail-close-button"
@@ -465,14 +568,14 @@ function EventLogs() {
 
 
           <div className="detail-info-row">
-            <span>이벤트 발생 시간</span>
+            <span><FiClock />이벤트 발생 시간</span>
             <strong>
               {formatDateTime(selectedEvent.occurredAt)}
             </strong>
           </div>
 
           <div className="detail-info-row">
-            <span>카메라 이름</span>
+            <span><FiVideo />카메라 이름</span>
             <strong>
               {selectedEvent.cameraName}
               {" "}
@@ -481,17 +584,17 @@ function EventLogs() {
           </div>
 
           <div className="detail-info-row">
-            <span>이벤트 종류</span>
+            <span><FiTag />이벤트 종류</span>
 
             <strong className="event-type">
-              {getEventIcon(selectedEvent.type)}
+              <EventTypeIcon type={selectedEvent.type} />
               {getEventLabel(selectedEvent.type)}
             </strong>
           </div>
 
 
           <div className="detail-description">
-            <span>상세 설명</span>
+            <span><FiAlignLeft />상세 설명</span>
 
             <p>
               {selectedEvent.description}
@@ -502,7 +605,7 @@ function EventLogs() {
           {selectedEvent.snapshotUrl && (
             <div className="snapshot-section">
 
-              <h3>스냅샷 이미지</h3>
+              <h3><FiImage />스냅샷 이미지</h3>
 
               <img
                 src={selectedEvent.snapshotUrl}
@@ -524,7 +627,7 @@ function EventLogs() {
 
           <div className="detail-status-section">
 
-            <h3>상태 처리</h3>
+            <h3><FiCheckSquare />상태 처리</h3>
 
             <div className="detail-status-buttons">
 
@@ -538,6 +641,7 @@ function EventLogs() {
                   handleStatusChange("unconfirmed")
                 }
               >
+                <FiAlertCircle />
                 미확인
               </button>
 
@@ -551,6 +655,7 @@ function EventLogs() {
                   handleStatusChange("confirmed")
                 }
               >
+                <FiCheckCircle />
                 확인 완료
               </button>
 
@@ -561,7 +666,7 @@ function EventLogs() {
 
           <div className="memo-section">
 
-            <h3>메모</h3>
+            <h3><FiEdit3 />메모</h3>
 
             <textarea
               value={memo}
@@ -578,6 +683,7 @@ function EventLogs() {
               className="memo-save-button"
               onClick={handleSaveMemo}
             >
+              <FiSave />
               저장
             </button>
 
@@ -624,16 +730,33 @@ function getEventIcon(type) {
       return <FiVolume2 />;
 
     case "vpn_connect":
-    case "vpn_disconnect":
       return <FiShield />;
 
+    case "vpn_disconnect":
+      return <FiShieldOff />;
+
     case "camera_connect":
-    case "camera_disconnect":
       return <FiVideo />;
+
+    case "camera_disconnect":
+      return <FiVideoOff />;
 
     default:
       return null;
   }
+}
+
+
+// 이벤트 유형 아이콘 (대시보드 차트와 같은 유형별 색)
+function EventTypeIcon({ type }) {
+  return (
+    <span
+      className="event-type-icon"
+      style={{ "--type-color": EVENT_TYPE_META[type]?.color }}
+    >
+      {getEventIcon(type)}
+    </span>
+  );
 }
 
 

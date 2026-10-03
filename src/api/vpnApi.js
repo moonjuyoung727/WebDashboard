@@ -1,8 +1,10 @@
+import { getAccessToken } from "../storage/authStorage";
+
 // 클라이언트 VPN 연결 여부 확인
 export async function fetchClientVpnStatus() {
 
   /*  실제 서버 연동 시 사용
-  const token = localStorage.getItem("accessToken");
+  const token = getAccessToken();
 
   const response = await fetch("/api/status", {
     method: "GET",
@@ -27,7 +29,7 @@ export async function fetchClientVpnStatus() {
 
 // 클라이언트 VPN 연결 요청
 export async function connectClientVpn() {
-  const token = localStorage.getItem("accessToken");
+  const token = getAccessToken();
 
   const response = await fetch("/api/vpn/connect", {
     method: "POST",

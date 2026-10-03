@@ -1,14 +1,22 @@
 import { useState } from "react";
-import { FiX } from "react-icons/fi";
+import { FiX, FiCpu, FiTag, FiMapPin, FiVideo } from "react-icons/fi";
 
 import "./CameraRegisterModal.css";
 
 const CAMERA_NAME_PATTERN = /^[가-힣a-zA-Z0-9 _()-]*$/;
 
+const MAC_PATTERN = /^([0-9A-F]{2}:){5}[0-9A-F]{2}$/;
 
-function CameraRegisterModal({ onClose, onRegister }) {
-  const [ serialNumber, setSerialNumber ] = useState("");
-  const [ activationCode, setActivationCode ] = useState("");
+// 입력값을 AA:BB:CC:DD:EE:FF 형식으로 정리 (구분자 -, : , 공백 모두 허용)
+function formatMacAddress(value) {
+  const hex = value.toUpperCase().replace(/[^0-9A-F]/g, "").slice(0, 12);
+
+  return hex.match(/.{1,2}/g)?.join(":") ?? "";
+}
+
+
+function CameraRegisterModal({ onClose, onRegister, registeredMacs = [] }) {
+  const [ macAddress, setMacAddress ] = useState("");
   const [ cameraName, setCameraName ] = useState("");
   const [ location, setLocation ] = useState("");
 
@@ -21,16 +29,25 @@ function CameraRegisterModal({ onClose, onRegister }) {
 
     setSubmitted(true);
 
-    const isSerialEmpty = !serialNumber.trim();
-    const isCodeEmpty = !activationCode.trim();
+    const isMacEmpty = !macAddress;
     const isNameEmpty = !cameraName.trim();
 
-    if (isSerialEmpty || isCodeEmpty || isNameEmpty) {
+    if (isMacEmpty || isNameEmpty) {
       setErrorMessage("필수 항목을 모두 입력해주세요.");
       return;
     }
 
-    if (!CAMERA_NAME_PATTERN.text(cameraName.trim())) {
+    if (!MAC_PATTERN.test(macAddress)) {
+      setErrorMessage("MAC 주소 형식이 올바르지 않습니다. (예: A4:5E:60:1C:00:01)");
+      return;
+    }
+
+    if (registeredMacs.includes(macAddress)) {
+      setErrorMessage("이미 등록된 MAC 주소입니다.");
+      return;
+    }
+
+    if (!CAMERA_NAME_PATTERN.test(cameraName.trim())) {
       setErrorMessage(
         "카메라 이름은 한글, 영문, 숫자, 공백, -, _, (, )만 사용할 수 있습니다."
       );
@@ -40,8 +57,7 @@ function CameraRegisterModal({ onClose, onRegister }) {
     setErrorMessage("");
 
     const newCamera = {
-      serialNumber: serialNumber.trim(),
-      activationCode: activationCode.trim(),
+      mac: macAddress,
       name: cameraName.trim(),
       location: location.trim() || "미설정",
     };
@@ -60,8 +76,13 @@ function CameraRegisterModal({ onClose, onRegister }) {
       >
         <div className="register-modal-header">
           <div>
-            <h2>카메라 등록</h2>
-            <p>새로운 카메라 보드를 계정에 등록합니다.</p>
+            <h2>
+              <span className="register-title-icon">
+                <FiVideo />
+              </span>
+              카메라 등록
+            </h2>
+            <p>카메라 보드의 MAC 주소로 계정에 등록합니다.</p>
           </div>
 
           <button
@@ -78,51 +99,39 @@ function CameraRegisterModal({ onClose, onRegister }) {
           onSubmit={handleSubmit}
         >
           <div className="register-field">
-            <label>
-              시리얼 번호 
+            <label htmlFor="register-mac">
+              <FiCpu className="register-label-icon" />
+              MAC 주소
               <span className="required-mark">*</span>
             </label>
             <input
+              id="register-mac"
               type="text"
-              placeholder="보드 시리얼 번호"
-              value={serialNumber}
-              className={
-                submitted && !serialNumber.trim()
+              className={`mac-input ${
+                submitted && !MAC_PATTERN.test(macAddress)
                   ? "input-error"
                   : ""
-              }
+              }`.trim()}
+              placeholder="AA:BB:CC:DD:EE:FF"
+              value={macAddress}
+              maxLength={17}
+              autoComplete="off"
+              spellCheck={false}
               onChange={(event) => {
-                setSerialNumber(event.target.value);
+                setMacAddress(formatMacAddress(event.target.value));
                 setErrorMessage("");
               }}
             />
-          </div>
-
-          <div className="register-field">
-            <label>
-              등록 코드
-              <span className="required-mark">*</span>
-            </label>
-            <input
-              type="text"
-              placeholder="Activation Code"
-              value={activationCode}
-              className={
-                submitted && !activationCode.trim()
-                  ? "input-error"
-                  : ""
-              }
-              onChange={(event) => {
-                setActivationCode(event.target.value);
-                setErrorMessage("");
-              }}
-            />
+            <p className="field-hint">
+              보드 뒷면 라벨에 적힌 12자리 값을 입력하세요. 구분자(:)는 자동으로 입력됩니다.
+            </p>
           </div>
 
           <div className="register-devider" />
 
           <div className="register-field">
             <label>
+              <FiTag className="register-label-icon" />
               카메라 이름
               <span className="required-mark">*</span>
             </label>
@@ -143,7 +152,7 @@ function CameraRegisterModal({ onClose, onRegister }) {
                   setCameraName(value);
                   setErrorMessage("");
 
-                  if (!CAMERA_NAME_PATTERN.text(value)) {
+                  if (!CAMERA_NAME_PATTERN.test(value)) {
                     setCameraNameError(
                       "한글, 영문, 숫자, 공백, -, _, (, )만 사용할 수 있습니다."
                     );
@@ -168,7 +177,10 @@ function CameraRegisterModal({ onClose, onRegister }) {
           </div>
 
           <div className="register-field">
-            <label>설치 위치</label>
+            <label>
+              <FiMapPin className="register-label-icon" />
+              설치 위치
+            </label>
             <div className="camera-location-input-wrapper">
               <input
                 type="text"

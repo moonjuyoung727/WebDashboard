@@ -1,11 +1,32 @@
+/* =========================
+   한 화면 레이아웃
+   설정에서만 레이아웃을 뷰포트 높이로 고정하고
+   내용이 길면 오른쪽 설정 영역 안에서만 스크롤 (페이지 전체는 스크롤 없음)
+========================= */
+
+.main-layout:has(> .settings-page) {
+  height: 100vh;
+
+  display: flex;
+  flex-direction: column;
+}
+
+.main-layout:has(> .settings-page) > :not(.settings-page) {
+  flex-shrink: 0;
+}
 
 .settings-page {
+  flex: 1;
+  min-height: 0;
+
   display: grid;
-  grid-template-columns: 220px 1fr;
+  grid-template-columns: 220px minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr);
 
   gap: 25px;
 
-  margin: 20px 30px 40px;
+  padding: 0 30px 20px;
+  box-sizing: border-box;
 }
 
 .settings-menu {
@@ -44,21 +65,48 @@
   font-weight: 600;
 }
 
+/* 설정 영역: 남는 높이를 채우고, 넘치는 내용은 이 안에서만 스크롤 */
 .settings-content {
-  min-height: 500px;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
 
-  padding: 25px;
+  padding: 0 25px 25px;
 
   background-color: var(--bg);
 
   border: none;
   box-shadow: var(--raised);
   border-radius: var(--radius-lg);
+
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.12) transparent;
 }
 
-.settings-section h2 {
-  margin-top: 0;
-  margin-bottom: 25px;
+.settings-content::-webkit-scrollbar {
+  width: 8px;
+}
+
+.settings-content::-webkit-scrollbar-thumb {
+  background-color: rgba(255, 255, 255, 0.12);
+  border-radius: 4px;
+}
+
+.settings-content::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+/* 제목은 스크롤해도 위에 고정 (어떤 설정인지 항상 보이게) */
+.settings-section > h2 {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+
+  margin: 0 0 15px;
+  padding: 22px 0 14px;
+
+  background-color: var(--bg);
+  border-bottom: 1px solid var(--line);
 
   font-size: 20px;
 }

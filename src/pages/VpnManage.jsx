@@ -1,12 +1,13 @@
 import { useState } from "react";
 import { initialVpnDevices } from "../data/vpnDevices";
 import Pagination from "../components/Pagination";
+import useFitPagination from "../hooks/useFitPagination";
 import Toggle from "../components/Toggle";
 import { useNavigate } from "react-router-dom";
 import VpnSummary from "../components/vpn/VpnSummary";
 import VpnDeviceTable from "../components/vpn/VpnDeviceTable";
-import VpnPeerStatus from "../components/vpn/VpnPeerStatus";
 import { useVpn } from "../context/VpnContext";
+import { VPN_STATUS_META } from "../components/charts/chartColors";
 import VpnDeviceDetailModal from "../components/vpn/VpnDeviceDetailModal";
 // import { connectClientVpn, getVpnDevices } from "../api/vpnApi";  // 서버 연결 후 주석 해제
 import "./VpnManage.css";
@@ -17,12 +18,10 @@ function VpnManage() {
     const [ devices, setDevices ] = useState(initialVpnDevices);
     const [ searchKeyword, setSearchKeyword ] = useState("");
     const [ statusFilter, setStatusFilter ] = useState("all");
-    const [ currentPage, setCurrentPage ] = useState(1);
     const [refreshing, setRefreshing] = useState(false);
     const [ lastUpdated, setLastUpdated ] = useState(
         new Date().toLocaleString()
     );
-    const devicesPerPage = 8;
 
     // WEB-F-054 상세 정보 모달
     const [ selectedDevice, setSelectedDevice ] = useState(null);
@@ -56,19 +55,14 @@ function VpnManage() {
         return matchesSearch && matchesStatus;
     });
 
-    /* pagination */
-    const totalPages = Math.max(
-        1,
-        Math.ceil(filteredDevices.length / devicesPerPage)
-    );
-
-    const startIndex = 
-        (currentPage - 1) * devicesPerPage;
-    
-    const currentDevices = filteredDevices.slice(
-        startIndex,
-        startIndex + devicesPerPage
-    );
+    /* pagination: 화면 높이에 들어가는 만큼만 한 페이지에 표시 */
+    const {
+        areaRef: tableAreaRef,
+        pageItems: currentDevices,
+        page: currentPage,
+        setPage: setCurrentPage,
+        totalPages,
+    } = useFitPagination(filteredDevices);
 
     /* search */
     function handleSearchChange(e) {
@@ -198,12 +192,10 @@ function VpnManage() {
     return (
       <main className="vpn-page">
 
-        <VpnPeerStatus
-          status={peerVpnStatus}
-          onReconnect={handlePeerReconnect}
-        />
-
+        {/* Client VPN 연결 + 카메라 VPN 상태 요약 */}
         <VpnSummary
+          peerStatus={peerVpnStatus}
+          onPeerReconnect={handlePeerReconnect}
           totalDevices={totalDevices}
           connectedDevices={connectedDevices}
           disconnectedDevices={disconnectedDevices}
@@ -229,15 +221,11 @@ function VpnManage() {
               <option value="all">
                 연결 상태 전체
               </option>
-              <option value="connected">
-                연결됨
-              </option>
-              <option value="disconnected">
-                연결 안 됨
-              </option>
-              <option value="error">
-                연결 오류
-              </option>
+              {Object.entries(VPN_STATUS_META).map(([key, meta]) => (
+                <option key={key} value={key}>
+                  {meta.label}
+                </option>
+              ))}
             </select>
             <button
               type="button"
@@ -248,12 +236,14 @@ function VpnManage() {
             </button>
           </div>
 
-          <VpnDeviceTable
-            devices={currentDevices}
-            onToggle={handleToggle}
-            onRecoveryRequest={handleConnection}
-            onSelect={setSelectedDevice}
-          />
+          <div className="vpn-table-area" ref={tableAreaRef}>
+            <VpnDeviceTable
+              devices={currentDevices}
+              onToggle={handleToggle}
+              onRecoveryRequest={handleConnection}
+              onSelect={setSelectedDevice}
+            />
+          </div>
 
           <Pagination
             currentPage={currentPage}

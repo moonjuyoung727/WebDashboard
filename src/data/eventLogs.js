@@ -1,7 +1,25 @@
+// 이벤트 로그 목업 (서버 연결 전 시연용)
+// 발생 시간은 화면을 연 시점 기준 상대 시간 → 날짜가 지나도 기간 선택(오늘 / 7일 / 30일 / 60일)이 항상 맞게 동작
+//   오늘 4건 · 최근 7일 7건 · 최근 30일 9건 · 최근 60일 10건
+
+const pad = (value) => String(value).padStart(2, "0");
+
+// 지금으로부터 days / hours / minutes / seconds 전 → "YYYY-MM-DDTHH:mm:ss" (로컬 시간)
+function ago({ days = 0, hours = 0, minutes = 0, seconds = 0 }) {
+  const date = new Date(
+    Date.now() - (((days * 24 + hours) * 60 + minutes) * 60 + seconds) * 1000
+  );
+
+  return (
+    `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}` +
+    `T${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`
+  );
+}
+
 export const eventLogs = [
   {
     id: 1,
-    occurredAt: "2025-05-15T14:32:15",
+    occurredAt: ago({ minutes: 12, seconds: 15 }),
     cameraId: 1,
     cameraName: "CAM-01",
     location: "출입구",
@@ -14,7 +32,7 @@ export const eventLogs = [
   },
   {
     id: 2,
-    occurredAt: "2025-05-15T14:20:08",
+    occurredAt: ago({ minutes: 24, seconds: 8 }),
     cameraId: 3,
     cameraName: "CAM-03",
     location: "창고",
@@ -27,7 +45,7 @@ export const eventLogs = [
   },
   {
     id: 3,
-    occurredAt: "2025-05-15T13:52:41",
+    occurredAt: ago({ minutes: 52, seconds: 41 }),
     cameraId: 5,
     cameraName: "CAM-05",
     location: "주차장",
@@ -40,7 +58,7 @@ export const eventLogs = [
   },
   {
     id: 4,
-    occurredAt: "2025-05-15T13:40:12",
+    occurredAt: ago({ hours: 1, minutes: 5, seconds: 12 }),
     cameraId: 2,
     cameraName: "CAM-02",
     location: "복도",
@@ -53,7 +71,7 @@ export const eventLogs = [
   },
   {
     id: 5,
-    occurredAt: "2025-05-15T13:15:33",
+    occurredAt: ago({ days: 1, hours: 2, minutes: 15 }),
     cameraId: 4,
     cameraName: "CAM-04",
     location: "사무실",
@@ -66,7 +84,7 @@ export const eventLogs = [
   },
   {
     id: 6,
-    occurredAt: "2025-05-15T12:58:22",
+    occurredAt: ago({ days: 2, hours: 3, minutes: 40 }),
     cameraId: 1,
     cameraName: "CAM-01",
     location: "출입구",
@@ -79,7 +97,7 @@ export const eventLogs = [
   },
   {
     id: 7,
-    occurredAt: "2025-05-15T12:40:55",
+    occurredAt: ago({ days: 5, hours: 1, minutes: 20 }),
     cameraId: 6,
     cameraName: "CAM-06",
     location: "후문",
@@ -92,7 +110,7 @@ export const eventLogs = [
   },
   {
     id: 8,
-    occurredAt: "2025-05-15T12:22:11",
+    occurredAt: ago({ days: 12, hours: 4, minutes: 10 }),
     cameraId: 3,
     cameraName: "CAM-03",
     location: "창고",
@@ -105,7 +123,7 @@ export const eventLogs = [
   },
   {
     id: 9,
-    occurredAt: "2025-05-15T11:58:44",
+    occurredAt: ago({ days: 25, hours: 2, minutes: 30 }),
     cameraId: 7,
     cameraName: "CAM-07",
     location: "외부",
@@ -118,7 +136,7 @@ export const eventLogs = [
   },
   {
     id: 10,
-    occurredAt: "2025-05-15T11:32:07",
+    occurredAt: ago({ days: 45, hours: 5, minutes: 5 }),
     cameraId: 2,
     cameraName: "CAM-02",
     location: "복도",

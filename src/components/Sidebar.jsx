@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { NavLink, useNavigate } from "react-router-dom";
 import { cameras } from "../data/cameras";
+import { clearSession } from "../storage/authStorage";
 import "./Sidebar.css";
 
 function Sidebar({ isOpen, onClose }) {
@@ -52,7 +53,7 @@ function Sidebar({ isOpen, onClose }) {
   };
 
   const handleLogout = () => {
-    localStorage.removeItem("accessToken");
+    clearSession();
 
     setIsMonitoringPopoverOpen(false);
     onClose();

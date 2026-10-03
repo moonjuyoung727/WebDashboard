@@ -6,6 +6,7 @@ export const cameras = [
     ip: "10.0.0.101",
     favorite: true,
     hwnum: "CAM-0001",
+    mac: "A4:5E:60:1C:00:01",
 
     location: "1층 현관",
     boardId: "BRD-0001",
@@ -28,6 +29,7 @@ export const cameras = [
     ip: "10.0.0.102",
     favorite: true,
     hwnum: "CAM-0002",
+    mac: "A4:5E:60:1C:00:02",
 
     location: "지하 1층 주차장 입구",
     boardId: "BRD-0002",
@@ -50,6 +52,7 @@ export const cameras = [
     ip: "10.0.0.103",
     favorite: false,
     hwnum: "CAM-0003",
+    mac: "A4:5E:60:1C:00:03",
 
     location: "1층 거실",
     boardId: "BRD-0003",
@@ -72,6 +75,7 @@ export const cameras = [
     ip: "10.0.0.104",
     favorite: false,
     hwnum: "CAM-0004",
+    mac: "A4:5E:60:1C:00:04",
 
     location: "1층 부엌",
     boardId: "BRD-0004",
@@ -94,6 +98,7 @@ export const cameras = [
     ip: "10.0.0.105",
     favorite: false,
     hwnum: "CAM-0005",
+    mac: "A4:5E:60:1C:00:05",
 
     location: "2층 중앙 복도",
     boardId: "BRD-0005",
@@ -116,6 +121,7 @@ export const cameras = [
     ip: "10.0.0.106",
     favorite: true,
     hwnum: "CAM-0006",
+    mac: "A4:5E:60:1C:00:06",
 
     location: "1층 엘리베이터 앞",
     boardId: "BRD-0006",
@@ -138,6 +144,7 @@ export const cameras = [
     ip: "10.0.0.107",
     favorite: false,
     hwnum: "CAM-0007",
+    mac: "A4:5E:60:1C:00:07",
 
     location: "2층 엘리베이터 앞",
     boardId: "BRD-0007",
@@ -160,6 +167,7 @@ export const cameras = [
     ip: "10.0.0.108",
     favorite: true,
     hwnum: "CAM-0008",
+    mac: "A4:5E:60:1C:00:08",
 
     location: "옥상 출입구",
     boardId: "BRD-0008",
@@ -182,6 +190,7 @@ export const cameras = [
     ip: "10.0.0.109",
     favorite: true,
     hwnum: "CAM-0009",
+    mac: "A4:5E:60:1C:00:09",
 
     location: "건물 정문",
     boardId: "BRD-0009",
@@ -204,6 +213,7 @@ export const cameras = [
     ip: "10.0.0.110",
     favorite: false,
     hwnum: "CAM-0010",
+    mac: "A4:5E:60:1C:00:0A",
 
     location: "건물 후문",
     boardId: "BRD-0010",
@@ -226,6 +236,7 @@ export const cameras = [
     ip: "10.0.0.111",
     favorite: false,
     hwnum: "CAM-0011",
+    mac: "A4:5E:60:1C:00:0B",
 
     location: "지하 1층 창고",
     boardId: "BRD-0011",
@@ -248,6 +259,7 @@ export const cameras = [
     ip: "10.0.0.112",
     favorite: false,
     hwnum: "CAM-0012",
+    mac: "A4:5E:60:1C:00:0C",
 
     location: "3층 서버실",
     boardId: "BRD-0012",
@@ -270,6 +282,7 @@ export const cameras = [
     ip: "10.0.0.113",
     favorite: false,
     hwnum: "CAM-0013",
+    mac: "A4:5E:60:1C:00:0D",
 
     location: "3층 사무실 A",
     boardId: "BRD-0013",
@@ -292,6 +305,7 @@ export const cameras = [
     ip: "10.0.0.114",
     favorite: false,
     hwnum: "CAM-0014",
+    mac: "A4:5E:60:1C:00:0E",
 
     location: "3층 사무실 B",
     boardId: "BRD-0014",
@@ -314,6 +328,7 @@ export const cameras = [
     ip: "10.0.0.115",
     favorite: false,
     hwnum: "CAM-0015",
+    mac: "A4:5E:60:1C:00:0F",
 
     location: "4층 대회의실",
     boardId: "BRD-0015",
@@ -336,6 +351,7 @@ export const cameras = [
     ip: "10.0.0.116",
     favorite: false,
     hwnum: "CAM-0016",
+    mac: "A4:5E:60:1C:00:10",
 
     location: "4층 휴게실",
     boardId: "BRD-0016",
@@ -358,6 +374,7 @@ export const cameras = [
     ip: "10.0.0.117",
     favorite: false,
     hwnum: "CAM-0017",
+    mac: "A4:5E:60:1C:00:11",
 
     location: "1층 비상계단",
     boardId: "BRD-0017",
@@ -380,6 +397,7 @@ export const cameras = [
     ip: "10.0.0.118",
     favorite: false,
     hwnum: "CAM-0018",
+    mac: "A4:5E:60:1C:00:12",
 
     location: "2층 비상계단",
     boardId: "BRD-0018",
@@ -402,6 +420,7 @@ export const cameras = [
     ip: "10.0.0.119",
     favorite: false,
     hwnum: "CAM-0019",
+    mac: "A4:5E:60:1C:00:13",
 
     location: "3층 비상계단",
     boardId: "BRD-0019",
@@ -424,6 +443,7 @@ export const cameras = [
     ip: "10.0.0.120",
     favorite: false,
     hwnum: "CAM-0020",
+    mac: "A4:5E:60:1C:00:14",
 
     location: "지하 1층 주차구역 A",
     boardId: "BRD-0020",
@@ -446,6 +466,7 @@ export const cameras = [
     ip: "10.0.0.121",
     favorite: false,
     hwnum: "CAM-0021",
+    mac: "A4:5E:60:1C:00:15",
 
     location: "지하 1층 주차구역 B",
     boardId: "BRD-0021",
@@ -468,6 +489,7 @@ export const cameras = [
     ip: "10.0.0.122",
     favorite: false,
     hwnum: "CAM-0022",
+    mac: "A4:5E:60:1C:00:16",
 
     location: "지하 2층 주차구역 C",
     boardId: "BRD-0022",
@@ -490,6 +512,7 @@ export const cameras = [
     ip: "10.0.0.123",
     favorite: false,
     hwnum: "CAM-0023",
+    mac: "A4:5E:60:1C:00:17",
 
     location: "별관 출입구",
     boardId: "BRD-0023",
@@ -512,6 +535,7 @@ export const cameras = [
   //   ip: "10.0.0.124",
   //   favorite: false,
   //   hwnum: "CAM-0024",
+  //   mac: "A4:5E:60:1C:00:18",
   // },
 
   // {
@@ -521,6 +545,7 @@ export const cameras = [
   //   ip: "10.0.0.125",
   //   favorite: false,
   //   hwnum: "CAM-0025",
+  //   mac: "A4:5E:60:1C:00:19",
   // },
 
   // {
@@ -530,6 +555,7 @@ export const cameras = [
   //   ip: "10.0.0.126",
   //   favorite: false,
   //   hwnum: "CAM-0026",
+  //   mac: "A4:5E:60:1C:00:1A",
   // },
 
   // {
@@ -539,6 +565,7 @@ export const cameras = [
   //   ip: "10.0.0.127",
   //   favorite: false,
   //   hwnum: "CAM-0027",
+  //   mac: "A4:5E:60:1C:00:1B",
   // },
 
   // {
@@ -548,6 +575,7 @@ export const cameras = [
   //   ip: "10.0.0.128",
   //   favorite: false,
   //   hwnum: "CAM-0028",
+  //   mac: "A4:5E:60:1C:00:1C",
   // },
 
   // {
@@ -557,6 +585,7 @@ export const cameras = [
   //   ip: "10.0.0.129",
   //   favorite: false,
   //   hwnum: "CAM-0029",
+  //   mac: "A4:5E:60:1C:00:1D",
   // },
 
   // {
@@ -566,6 +595,7 @@ export const cameras = [
   //   ip: "10.0.0.130",
   //   favorite: false,
   //   hwnum: "CAM-0030",
+  //   mac: "A4:5E:60:1C:00:1E",
   // },
 
   // {
@@ -575,6 +605,7 @@ export const cameras = [
   //   ip: "10.0.0.131",
   //   favorite: false,
   //   hwnum: "CAM-0031",
+  //   mac: "A4:5E:60:1C:00:1F",
   // },
 
   // {
@@ -584,5 +615,6 @@ export const cameras = [
   //   ip: "10.0.0.132",
   //   favorite: false,
   //   hwnum: "CAM-0032",
+  //   mac: "A4:5E:60:1C:00:20",
   // },
 ];

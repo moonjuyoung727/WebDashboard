@@ -4,6 +4,7 @@ import Sidebar from "../components/Sidebar";
 import VpnAlertBanner from "../components/vpn/VpnAlertBanner";
 import recentNotifications from "../data/recentNotifications.js";
 // import { logout } from "../api/authApi";  // 백엔드 연결 시 주석 해제
+import { clearSession } from "../storage/authStorage";
 import "./MainLayout.css";
 
 function MainLayout() {
@@ -74,8 +75,7 @@ function MainLayout() {
   };
 
   function handleLogout() {
-    localStorage.removeItem("accessToken");
-    localStorage.removeItem("refreshToken");
+    clearSession();
 
     sessionStorage.clear();
 
@@ -88,8 +88,7 @@ function MainLayout() {
     // try {
     //   await logout();
     // } finally {
-    //   localStorage.removeItem("accessToken");
-    //   localStorage.removeItem("refreshToken");
+    //   clearSession();
     //   sessionStorage.clear();
 
     //   navigate("/login", {

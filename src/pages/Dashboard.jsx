@@ -61,11 +61,12 @@ function Dashboard() {
 
   const summary = useMemo(() => generateDashboardSummary(unreadAlerts), [unreadAlerts]);
 
+  // 카드 높이만큼 채워서 보여주고, 화면이 작으면 목록 안에서만 스크롤
   const recentEvents = useMemo(
     () =>
       [...eventLogs]
         .sort((a, b) => b.occurredAt.localeCompare(a.occurredAt))
-        .slice(0, 6),
+        .slice(0, 12),
     []
   );
 
@@ -90,12 +91,17 @@ function Dashboard() {
 
   const vpnList = useMemo(() => getDeviceVpnList(), []);
 
-  const vpnChartData = Object.entries(VPN_STATUS_META).map(([key, meta]) => ({
-    key,
-    label: meta.label,
-    color: meta.color,
-    value: vpnList.filter((d) => d.vpnStatus === key).length,
-  }));
+  const vpnStats = Object.entries(VPN_STATUS_META).map(([key, meta]) => {
+    const value = vpnList.filter((d) => d.vpnStatus === key).length;
+
+    return {
+      key,
+      label: meta.label,
+      color: meta.color,
+      value,
+      percent: vpnList.length === 0 ? 0 : (value / vpnList.length) * 100,
+    };
+  });
 
   // 문제 있는 기기를 먼저 보여줌
   const statusOrder = { error: 0, disconnected: 1, connected: 2 };
@@ -111,7 +117,7 @@ function Dashboard() {
       try {
         const [summaryData, recent, vpn] = await Promise.all([
           getDashboardSummary(),
-          getRecentEvents(6),
+          getRecentEvents(12),
           getDeviceVpnStatusList(),
         ]);
         setSummary(summaryData);
@@ -164,137 +170,102 @@ function Dashboard() {
 
       <section className="dash-grid">
 
-        {/* WEB-F-002 최근 이벤트 */}
-        <article className="dash-card">
+        {/* WEB-F-002 이벤트 현황 (유형별 현황 + 최근 이벤트) */}
+        <article className="dash-card dash-events">
           <div className="dash-card-header">
-            <h3>최근 발생 이벤트</h3>
+            <h3>이벤트 현황</h3>
             <button type="button" className="dash-link" onClick={() => navigate("/event-logs")}>
               전체 보기 <FiChevronRight />
             </button>
           </div>
 
-          <ul className="recent-event-list">
-            {recentEvents.map((event) => (
-              <li key={event.id}>
-                <button type="button" onClick={() => navigate("/event-logs")}>
-                  <span
-                    className="recent-event-swatch"
-                    style={{ backgroundColor: EVENT_TYPE_META[event.type]?.color }}
-                  />
-                  <div className="recent-event-main">
-                    <strong>{EVENT_TYPE_META[event.type]?.label ?? event.type}</strong>
-                    <span>
-                      {event.cameraName} · {event.location}
-                    </span>
-                  </div>
-                  <div className="recent-event-meta">
-                    <small>{event.occurredAt.replace("T", " ").slice(5, 16)}</small>
-                    <span className={`recent-event-status ${event.status}`}>
-                      {event.status === "confirmed" ? "확인 완료" : "미확인"}
-                    </span>
-                  </div>
-                </button>
-              </li>
-            ))}
-          </ul>
-        </article>
+          <div className="dash-events-body">
+            <section className="dash-pane dash-type-pane">
+              <div className="dash-pane-header">
+                <h4>유형별 발생</h4>
 
+                <div className="dash-segment">
+                  {PERIODS.map((p) => (
+                    <button
+                      type="button"
+                      key={p.key}
+                      className={period === p.key ? "active" : ""}
+                      onClick={() => setPeriod(p.key)}
+                    >
+                      {p.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
 
-        {/* WEB-F-002 유형별 현황 */}
-        <article className="dash-card">
-          <div className="dash-card-header">
-            <h3>이벤트 유형별 발생 현황</h3>
+              <DonutChart data={typeStats} size={230} thickness={28} centerLabel="전체 이벤트" />
+            </section>
 
-            <div className="dash-segment">
-              {PERIODS.map((p) => (
-                <button
-                  type="button"
-                  key={p.key}
-                  className={period === p.key ? "active" : ""}
-                  onClick={() => setPeriod(p.key)}
-                >
-                  {p.label}
-                </button>
-              ))}
-            </div>
+            <section className="dash-pane dash-recent-pane">
+              <div className="dash-pane-header">
+                <h4>최근 발생</h4>
+              </div>
+
+              <ul className="recent-event-list">
+                {recentEvents.map((event) => (
+                  <li key={event.id}>
+                    <button type="button" onClick={() => navigate("/event-logs")}>
+                      <span
+                        className="recent-event-swatch"
+                        style={{ backgroundColor: EVENT_TYPE_META[event.type]?.color }}
+                      />
+                      <div className="recent-event-main">
+                        <strong>{EVENT_TYPE_META[event.type]?.label ?? event.type}</strong>
+                        <span>
+                          {event.cameraName} · {event.location}
+                        </span>
+                      </div>
+                      <div className="recent-event-meta">
+                        <small>{event.occurredAt.replace("T", " ").slice(5, 16)}</small>
+                        <span className={`recent-event-status ${event.status}`}>
+                          {event.status === "confirmed" ? "확인 완료" : "미확인"}
+                        </span>
+                      </div>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </section>
           </div>
-
-          <DonutChart data={typeStats} centerLabel="전체 이벤트" />
         </article>
 
 
-        {/* WEB-F-003 Device VPN */}
-        <article className="dash-card">
+        {/* WEB-F-003 / WEB-F-004 VPN 연결 상태 (Client + Device) */}
+        <article className="dash-card dash-vpn">
           <div className="dash-card-header">
-            <h3>Device VPN 연결 상태</h3>
+            <h3>VPN 연결 상태</h3>
             <button type="button" className="dash-link" onClick={() => navigate("/vpn-manage")}>
               VPN 관리 <FiChevronRight />
             </button>
           </div>
 
-          <div className="dash-vpn-body">
-            <DonutChart
-              data={vpnChartData}
-              size={150}
-              thickness={18}
-              centerLabel="전체 기기"
-              unit="대"
-            />
-          </div>
-
-          <div className="dash-vpn-filter">
-            {[["all", "전체"], ...Object.entries(VPN_STATUS_META).map(([k, m]) => [k, m.label])].map(
-              ([key, label]) => (
-                <button
-                  type="button"
-                  key={key}
-                  className={vpnFilter === key ? "active" : ""}
-                  onClick={() => setVpnFilter(key)}
-                >
-                  {label}
-                </button>
-              )
-            )}
-          </div>
-
-          <ul className="dash-vpn-list">
-            {filteredVpnList.map((device) => (
-              <li key={device.cameraId}>
-                <span className="dash-vpn-name">
-                  {device.cameraName}
-                  <small>CAM-{String(device.cameraId).padStart(4, "0")}</small>
-                </span>
-                <span className={`dash-vpn-status ${device.vpnStatus}`}>
-                  <span className="status-dot" />
-                  {VPN_STATUS_META[device.vpnStatus].label}
-                </span>
-              </li>
-            ))}
-            {filteredVpnList.length === 0 && (
-              <li className="dash-empty">해당 상태의 기기가 없습니다.</li>
-            )}
-          </ul>
-        </article>
-
-
-        {/* WEB-F-004 Client VPN */}
-        <article className={`dash-card client-vpn-card ${peerVpnStatus}`}>
-          <div className="dash-card-header">
-            <h3>Client VPN 연결 상태</h3>
-          </div>
-
-          <div className="client-vpn-body">
+          {/* Client VPN (이 PC) */}
+          <div className={`client-vpn-strip ${peerVpnStatus}`}>
             <div className="client-vpn-icon">
               <FiShield />
             </div>
 
-            <strong className="client-vpn-label">{clientVpn.label}</strong>
-            <p>{clientVpn.desc}</p>
+            <div className="client-vpn-text">
+              <span className="client-vpn-caption">Client VPN · 이 PC</span>
+              <strong className="client-vpn-label">{clientVpn.label}</strong>
+              <p>{clientVpn.desc}</p>
+            </div>
 
             <div className="client-vpn-actions">
+              {peerVpnStatus === "error" && (
+                <button type="button" className="btn small primary" onClick={() => navigate("/vpn-manage")}>
+                  재연결 안내
+                </button>
+              )}
+
               <button
                 type="button"
-                className="btn"
+                className="btn small"
                 onClick={checkClientVpn}
                 disabled={peerVpnStatus === "connecting"}
               >
@@ -302,22 +273,73 @@ function Dashboard() {
                 연결 확인
               </button>
 
-              {peerVpnStatus === "error" && (
-                <button type="button" className="btn primary" onClick={() => navigate("/vpn-manage")}>
-                  재연결 안내
-                </button>
-              )}
+              {/* 시연용: 서버 연결 후 삭제 */}
+              <button
+                type="button"
+                className="client-vpn-demo"
+                onClick={() => setPeerVpnStatus("error")}
+                title="연결 끊김 시뮬레이션"
+              >
+                <span className="demo-tag">DEMO</span> 끊김
+              </button>
+            </div>
+          </div>
+
+          {/* Device VPN (카메라) */}
+          <section className="dash-pane dash-device-pane">
+            <div className="dash-pane-header">
+              <h4>Device VPN · 카메라</h4>
+
+              <div className="dash-vpn-filter">
+                {[["all", "전체"], ...Object.entries(VPN_STATUS_META).map(([k, m]) => [k, m.label])].map(
+                  ([key, label]) => (
+                    <button
+                      type="button"
+                      key={key}
+                      className={vpnFilter === key ? "active" : ""}
+                      onClick={() => setVpnFilter(key)}
+                    >
+                      {label}
+                    </button>
+                  )
+                )}
+              </div>
             </div>
 
-            {/* 시연용: 서버 연결 후 삭제 */}
-            <button
-              type="button"
-              className="client-vpn-demo"
-              onClick={() => setPeerVpnStatus("error")}
-            >
-              <span className="demo-tag">DEMO</span> 연결 끊김 시뮬레이션
-            </button>
-          </div>
+            <ul className="dash-vpn-stats">
+              {vpnStats.map((item) => (
+                <li key={item.key}>
+                  <span className="dash-vpn-stats-label">
+                    <span className="legend-swatch" style={{ backgroundColor: item.color }} />
+                    {item.label}
+                  </span>
+                  <strong>
+                    {item.value}
+                    <small>대</small>
+                  </strong>
+                  <span className="dash-vpn-stats-percent">{item.percent.toFixed(1)}%</span>
+                </li>
+              ))}
+            </ul>
+
+            <ul className="dash-vpn-list">
+              {filteredVpnList.map((device) => (
+                <li key={device.cameraId}>
+                  <span className="dash-vpn-name">
+                    {device.cameraName}
+                    <small>CAM-{String(device.cameraId).padStart(4, "0")}</small>
+                  </span>
+                  <span className={`dash-vpn-status ${device.vpnStatus}`}>
+                    <span className="status-dot" />
+                    {VPN_STATUS_META[device.vpnStatus].label}
+                  </span>
+                </li>
+              ))}
+              {filteredVpnList.length === 0 && (
+                <li className="dash-empty">해당 상태의 기기가 없습니다.</li>
+              )}
+            </ul>
+          </section>
         </article>
 
       </section>

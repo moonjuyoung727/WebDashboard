@@ -1,5 +1,5 @@
 //멀티뷰 카메라 한 채널
-import { useState } from "react";
+import { useRef, useState } from "react";
 import "./CameraCard.css";
 import {
   FiMoreHorizontal,
@@ -12,6 +12,7 @@ import {
 import { useFloating, offset, flip, shift, autoUpdate, useClick, useDismiss, useInteractions } from "@floating-ui/react";
 import { useNavigate } from "react-router-dom";
 import { VPN_STATUS_META } from "./charts/chartColors";
+import useWebRtcStream from "../hooks/useWebRtcStream";
 
 const pad = (value) => String(value).padStart(2, "0");
 
@@ -29,12 +30,20 @@ function CameraCard({
   now,
   recentEvent,
   highlighted = false,
+  streamUrl = null,
 }) {
 
   const [isDetailOpen, setIsDetailOpen] = useState(false);
   const navigate = useNavigate();
 
   const isOnline = camera.status === "online";
+
+  // 저해상도 실시간 영상 (WebRTC / WHEP) — 오프라인 카메라는 연결하지 않음
+  const videoRef = useRef(null);
+  const streamStatus = useWebRtcStream(
+    videoRef,
+    isOnline ? streamUrl : null
+  );
 
   const {refs, floatingStyles, context} = useFloating({
     open: isDetailOpen,
@@ -99,8 +108,25 @@ function CameraCard({
         }}
         aria-label={`${camera.name} 실시간 모니터링 열기`}
       >
-        {/* WEB-F-012 멀티뷰는 저해상도 스트림 재생 — 서버 연결 후 getLowResStreams() 응답의 streamUrl 사용 */}
-        {isOnline ? (
+        {/* WEB-F-012 멀티뷰는 저해상도 스트림 재생 — streamUrl 은 getLowResStreams() 응답의 WHEP 주소 */}
+        {isOnline && streamStatus !== "idle" ? (
+          <>
+            <video
+              ref={videoRef}
+              className="cam-stream"
+              autoPlay
+              muted
+              playsInline
+              disablePictureInPicture
+            />
+
+            {streamStatus !== "connected" && (
+              <div className={`cam-stream-status ${streamStatus}`}>
+                {streamStatus === "connecting" ? "연결 중..." : "연결 실패"}
+              </div>
+            )}
+          </>
+        ) : isOnline ? (
           <div className="cam-placeholder">
             <FiVideo />
           </div>

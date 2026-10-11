@@ -75,6 +75,38 @@
   font-weight: 700;
 }
 
+
+/* 헤더 오른쪽 끝 — 다채널 멀티뷰로 돌아가기 */
+.back-to-multiview-button {
+  margin-left: auto;
+
+  display: flex;
+  align-items: center;
+  gap: 4px;
+
+  padding: 7px 12px 7px 8px;
+
+  border: none;
+  box-shadow: var(--raised-sm);
+  border-radius: var(--radius-md);
+
+  background-color: transparent;
+
+  color: var(--accent);
+
+  cursor: pointer;
+
+  font-size: 13px;
+}
+
+.back-to-multiview-button svg {
+  font-size: 16px;
+}
+
+.back-to-multiview-button:hover {
+  background-color: var(--hover);
+}
+
 /* LIVE */
 
 .live-badge {
@@ -219,6 +251,136 @@
   height: 100%;
 
   object-fit: cover;
+}
+
+
+/* =========================
+   디지털 줌
+========================= */
+
+/* 확대된 영상이 영상 칸 밖으로 나가지 않게 잘라내는 창 */
+.zoom-stage {
+  position: absolute;
+  inset: 0;
+
+  overflow: hidden;
+
+  /* 터치에서 브라우저 스크롤/확대 대신 핀치 줌이 동작하도록 */
+  touch-action: none;
+  user-select: none;
+}
+
+.zoom-stage.zoomed {
+  cursor: grab;
+}
+
+.zoom-stage.zoomed.panning {
+  cursor: grabbing;
+}
+
+
+/* 영상 + 프라이버시 존 마스크를 함께 확대/이동 (useDigitalZoom 의 transform) */
+.zoom-layer {
+  position: absolute;
+  inset: 0;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  transform-origin: 0 0;
+  will-change: transform;
+}
+
+.zoom-layer .video-player {
+  pointer-events: none;
+}
+
+
+.zoom-controls {
+  position: absolute;
+
+  left: 16px;
+  bottom: 16px;
+
+  display: flex;
+  align-items: center;
+
+  gap: 2px;
+
+  padding: 4px;
+
+  background-color: rgba(5, 10, 15, 0.72);
+
+  border-radius: 6px;
+}
+
+.zoom-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  width: 30px;
+  height: 30px;
+
+  padding: 0;
+
+  border: none;
+  border-radius: 4px;
+
+  background-color: transparent;
+
+  color: var(--accent);
+
+  cursor: pointer;
+
+  font-size: 15px;
+}
+
+.zoom-button:hover:not(:disabled) {
+  background-color: rgba(255, 255, 255, 0.08);
+}
+
+.zoom-button:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+/* 100% ↔ 400% 로 글자 수가 바뀌어도 버튼이 밀리지 않게 */
+.zoom-level {
+  min-width: 46px;
+
+  color: var(--accent);
+
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+}
+
+
+/* 영상 가운데 연결 상태 안내 */
+.stream-status {
+  position: absolute;
+
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+
+  padding: 10px 16px;
+
+  background-color: rgba(5, 10, 15, 0.72);
+
+  border-radius: 6px;
+
+  color: var(--text-muted);
+
+  font-size: 14px;
+
+  pointer-events: none;
+}
+
+.stream-status.failed {
+  color: var(--danger);
 }
 
 

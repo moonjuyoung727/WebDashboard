@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 
 import {
@@ -21,6 +21,10 @@ import {
   FiEyeOff,
   FiGrid,
   FiRefreshCw,
+  FiZoomIn,
+  FiZoomOut,
+  FiRotateCcw,
+  FiChevronLeft,
 } from "react-icons/fi";
 
 import "./Monitoring.css";
@@ -29,6 +33,8 @@ import { cameras } from "../data/cameras";
 import EditableCameraName from "../components/EditableCameraName";
 import PrivacyZoneModal from "../components/privacy/PrivacyZoneModal";
 import { getZones } from "../data/privacyZoneStore";
+import useWebRtcStream from "../hooks/useWebRtcStream";
+import useDigitalZoom, { MIN_ZOOM, MAX_ZOOM } from "../hooks/useDigitalZoom";
 
 function Monitoring() {
   const { cameraId } = useParams();
@@ -47,6 +53,19 @@ function Monitoring() {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [streamKey, setStreamKey] = useState(0);
 
+  // 실시간 영상 (WebRTC / WHEP)
+  // 나중에 서버 연결 시 camera.webrtcUrl 에 WHEP 엔드포인트 주소 (예: http://<서버>:8889/cam1/whep)
+  const videoRef = useRef(null);
+  const streamStatus = useWebRtcStream(
+    videoRef,
+    originalCamera?.webrtcUrl ?? null,
+    streamKey
+  );
+
+  // 디지털 줌
+  const stageRef = useRef(null);
+  const zoom = useDigitalZoom(stageRef);
+
   // 프라이버시 존 (WEB-F-024)
   const [isPrivacyOpen, setIsPrivacyOpen] = useState(false);
   const [privacyZones, setPrivacyZones] = useState(() =>
@@ -59,6 +78,7 @@ function Monitoring() {
     setCamera(originalCamera || null);
     setIsEditingName(false);
     setPrivacyZones(getZones(Number(cameraId)));
+    zoom.reset();
   }, [cameraId]);
 
 
@@ -108,17 +128,12 @@ function Monitoring() {
 
     setIsRefreshing(true);
 
-    // 스트림 컴포넌트를 다시 mount
+    // streamKey 가 바뀌면 useWebRtcStream 이 WebRTC 연결을 끊고 다시 연결
     setStreamKey((prev) => prev + 1);
 
     setTimeout(() => {
       setIsRefreshing(false);
     }, 800);
-
-    /*
-      나중에 실제 HLS / WebRTC 연결 시에는
-      여기서 player 재연결 로직 호출
-    */
   }
 
 
@@ -183,6 +198,15 @@ function Monitoring() {
           </span>
         </div>
 
+        <button
+          type="button"
+          className="back-to-multiview-button"
+          onClick={() => navigate("/multiview")}
+        >
+          <FiChevronLeft />
+          멀티뷰
+        </button>
+
       </div>
 
 
@@ -192,48 +216,67 @@ function Monitoring() {
 
         <section className="video-section">
 
-          <div
-            key={streamKey}
-            className="real-time-video"
-          >
+          <div className="real-time-video">
 
-            {/* 나중에 실제 영상 */}
-
-            {/*
-            <video
-              className="video-player"
-              autoPlay
-              muted
-              controls
+            {/* 줌 영역 — 영상과 프라이버시 존 마스크를 같이 확대해야 위치가 어긋나지 않음 */}
+            <div
+              ref={stageRef}
+              className={`zoom-stage${zoom.isZoomed ? " zoomed" : ""}${
+                zoom.isPanning ? " panning" : ""
+              }`}
+              {...zoom.stageHandlers}
             >
-              <source
-                src={camera.videoUrl}
-                type="video/mp4"
-              />
-            </video>
-            */}
+              <div
+                className="zoom-layer"
+                style={zoom.layerStyle}
+              >
 
-            <div className="video-placeholder">
-              <FiVideo />
-              Video Stream
+                {streamStatus === "idle" ? (
+                  <div className="video-placeholder">
+                    <FiVideo />
+                    Video Stream
+                  </div>
+                ) : (
+                  <video
+                    ref={videoRef}
+                    className="video-player"
+                    autoPlay
+                    muted
+                    playsInline
+                    disablePictureInPicture
+                  />
+                )}
+
+                {/* 프라이버시 존 마스킹 표시 */}
+                {privacyZones
+                  .filter((zone) => zone.enabled)
+                  .map((zone) => (
+                    <div
+                      key={zone.id}
+                      className="privacy-mask"
+                      style={{
+                        left: `${zone.x * 100}%`,
+                        top: `${zone.y * 100}%`,
+                        width: `${zone.width * 100}%`,
+                        height: `${zone.height * 100}%`,
+                      }}
+                      title={zone.name}
+                    />
+                  ))}
+
+              </div>
             </div>
 
-            {/* 프라이버시 존 마스킹 표시 */}
-            {privacyZones
-              .filter((zone) => zone.enabled)
-              .map((zone) => (
-                <div
-                  key={zone.id}
-                  className="privacy-mask"
-                  style={{
-                    left: `${zone.x * 100}%`,
-                    top: `${zone.y * 100}%`,
-                    width: `${zone.width * 100}%`,
-                    height: `${zone.height * 100}%`,
-                  }}
-                  title={zone.name}
-                />
-              ))}
+
+            {/* 연결 상태 안내 */}
+
+            {(streamStatus === "connecting" || streamStatus === "failed") && (
+              <div className={`stream-status ${streamStatus}`}>
+                {streamStatus === "connecting"
+                  ? "영상 연결 중..."
+                  : "영상 연결에 실패했습니다. 새로고침을 눌러 다시 시도하세요."}
+              </div>
+            )}
 
 
             {/* 좌측 상단 LIVE + 현재시간 */}
@@ -249,6 +292,48 @@ function Monitoring() {
                 {formattedTime}
               </span>
 
+            </div>
+
+
+            {/* 왼쪽 하단 디지털 줌 */}
+
+            <div
+              className="zoom-controls"
+              title="휠: 확대/축소 · 드래그: 이동 · 더블클릭: 2배/원래대로"
+            >
+              <button
+                type="button"
+                className="zoom-button"
+                onClick={zoom.zoomOut}
+                disabled={zoom.scale <= MIN_ZOOM}
+                aria-label="축소"
+              >
+                <FiZoomOut />
+              </button>
+
+              <span className="zoom-level">
+                {Math.round(zoom.scale * 100)}%
+              </span>
+
+              <button
+                type="button"
+                className="zoom-button"
+                onClick={zoom.zoomIn}
+                disabled={zoom.scale >= MAX_ZOOM}
+                aria-label="확대"
+              >
+                <FiZoomIn />
+              </button>
+
+              <button
+                type="button"
+                className="zoom-button"
+                onClick={zoom.reset}
+                disabled={!zoom.isZoomed}
+                aria-label="원래 크기"
+              >
+                <FiRotateCcw />
+              </button>
             </div>
 
 

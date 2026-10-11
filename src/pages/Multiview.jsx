@@ -306,6 +306,8 @@ function Multiview() {
               channel={channelNo.get(camera.id)}
               now={now}
               highlighted={highlightId === camera.id}
+              // 서버 연결 후 getLowResStreams(현재 페이지 카메라 ID) 응답의 streamUrl 로 교체
+              streamUrl={camera.lowResStreamUrl ?? null}
             />
           ))}
 

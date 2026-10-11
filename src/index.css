@@ -81,6 +81,80 @@ button:disabled {
   box-shadow: none;
 }
 
+/* 선택 창(select) 펼친 목록도 다크 테마로 */
+select {
+  color-scheme: dark;
+}
+
+select option {
+  background-color: var(--bg);
+  color: var(--accent);
+}
+
+/* 지원 브라우저에서는 펼친 목록을 직접 그려서 hover 색까지 통일 */
+@supports (appearance: base-select) {
+  select,
+  ::picker(select) {
+    appearance: base-select;
+  }
+
+  /* 닫힌 상태는 기존 기본 선택 창과 같은 모양 유지 */
+  select {
+    align-items: center;
+    font: 400 13.3333px Arial;
+  }
+
+  select::picker-icon {
+    content: "";
+
+    width: 6px;
+    height: 6px;
+    margin: 0 2px 3px auto;
+
+    border-right: 1.5px solid currentColor;
+    border-bottom: 1.5px solid currentColor;
+
+    transform: rotate(45deg);
+    transition: none;
+  }
+
+  ::picker(select) {
+    margin-top: 5px;
+    padding: 5px;
+
+    color: var(--accent);
+    background-color: var(--bg);
+
+    border: none;
+    box-shadow: var(--raised);
+    border-radius: var(--radius-lg);
+  }
+
+  select option {
+    min-height: 34px;
+    padding: 0 9px;
+
+    background-color: transparent;
+    border-radius: 4px;
+
+    cursor: pointer;
+  }
+
+  select option:hover {
+    background-color: var(--hover);
+  }
+
+  /* 현재 선택된 항목: 페이지 크기 메뉴와 같은 눌린 면 */
+  select option:checked {
+    background-color: transparent;
+    box-shadow: var(--inset);
+  }
+
+  select option::checkmark {
+    display: none;
+  }
+}
+
 /* 스크롤바 */
 * {
   scrollbar-width: thin;

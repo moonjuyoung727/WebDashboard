@@ -184,20 +184,21 @@ export async function deletePaymentMethod(paymentMethodId) {
 */
 
 
-/* WEB-F-063 저장소 설정 조회 / 변경 (ICD 2.4.3)
-   화면 화질 low / medium / high ↔ 서버 video_quality SD / HD / FHD
-   saveMode, overwriteWhenFull, usage.byType은 명세에 없어서 주고받지 않는다
-   응답: { autoSave, quality, retentionDays, usage: { totalGb, usedGb } }
+// WEB-F-063 저장소 설정 조회 / 변경 (ICD 2.4.3)
+// 화면 화질 low / medium / high ↔ 서버 video_quality SD / HD / FHD
+// 응답: { autoSave, quality, retentionDays, usage: { totalGb, usedGb } }
 
 const QUALITY_TO_SERVER = { low: "SD", medium: "HD", high: "FHD" };
 const QUALITY_FROM_SERVER = { SD: "low", HD: "medium", FHD: "high" };
 
 // 2.4.3.1 저장소 설정 및 사용량 조회
 export async function getStorageSettings() {
-  const response = await apiFetch(`/storage/settings`);
+  const response = await apiFetch(`/storage/settings`, {
+    signal: AbortSignal.timeout(5000)
+  });
 
   if (!response.ok) {
-    throw await toApiError(response, "저장소 설정 조회 실패");
+    throw await toApiError(response, "저장소 설정 조회에 실패했습니다.");
   }
 
   const data = await response.json();
@@ -207,8 +208,8 @@ export async function getStorageSettings() {
     quality: QUALITY_FROM_SERVER[data.video_quality] ?? "high",
     retentionDays: data.retention_days,
     usage: {
-      totalGb: data.storage_total_gb,
-      usedGb: data.storage_used_gb
+      totalGb: data.storage_total_gb ?? 0,
+      usedGb: data.storage_used_gb ?? 0
     }
   };
 }
@@ -233,4 +234,3 @@ export async function updateStorageSettings({ autoSave, quality, retentionDays }
 
   return getStorageSettings();
 }
-*/

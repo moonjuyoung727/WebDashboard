@@ -307,6 +307,15 @@
   font-size: 22px;
 }
 
+/* 보드 목록을 못 받았을 때 그리드 전체를 차지하는 안내 */
+.mv-grid-notice {
+  grid-column: 1 / -1;
+  grid-row: 1 / -1;
+
+  border: 1px dashed rgba(255, 255, 255, 0.08);
+  border-radius: var(--radius-lg);
+}
+
 
 /* =========================
    채널 목록
@@ -576,7 +585,7 @@
   }
 }
 
-/* 보드 목록 출처 (서버 / 목업) — 좁은 패널이라 줄바꿈 허용 */
+/* 보드 목록 출처 (서버 / 연결 실패) — 좁은 패널이라 줄바꿈 허용 */
 .mv-source {
   margin: -4px 0 12px;
 

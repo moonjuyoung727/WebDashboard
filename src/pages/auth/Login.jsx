@@ -13,14 +13,14 @@ import {
   FaCheck
 } from "react-icons/fa";
 import { useLocation, useNavigate } from "react-router-dom";
-import { login, signup } from "../../api/authApi";
+import { login, signup, forgotPassword } from "../../api/authApi";
 import { ApiError } from "../../api/client";
 import {
   saveSession,
   clearSession,
   hasSavedSession,
   isRememberMe,
-  getRememberedEmail,
+  getRememberedUserId,
   takeLoginNotice
 } from "../../storage/authStorage";
 
@@ -79,7 +79,7 @@ function Login() {
   const isFind = mode === "findPw";
 
   const [name, setName] = useState("");
-  const [email, setEmail] = useState(getRememberedEmail);
+  const [email, setEmail] = useState(getRememberedUserId);
   const [password, setPassword] = useState("");
   const [passwordConfirm, setPasswordConfirm] = useState("");
 
@@ -333,7 +333,7 @@ function Login() {
       setIsBusy(true);
       setFeedback(null);
 
-      await signup(email.trim(), password, name.trim());
+      await signup({ email: email.trim(), password, name: name.trim() });
 
       // 회원가입이 끝나면 카드를 로그인으로 접고 이메일은 남겨 둔다
       setName("");
@@ -367,13 +367,18 @@ function Login() {
 
   /* 비밀번호 찾기 */
 
-  function handleFindPassword() {
+  async function handleFindPassword() {
     if (!validateEmail()) {
       return;
     }
 
-    // TODO: 비밀번호 찾기 API 연동 (백엔드 명세 확정 후)
-    showNotice("비밀번호 찾기는 서버 연동 후 사용할 수 있습니다.");
+    setIsBusy(true);
+    try {
+      await forgotPassword(email.trim());
+      showNotice("비밀번호 재설정 안내를 요청했습니다. 이메일을 확인해 주세요.");
+    } catch (error) {
+      showError(error.message || "비밀번호 재설정 안내 요청에 실패했습니다.", "email");
+    } finally { setIsBusy(false); }
   }
 
 

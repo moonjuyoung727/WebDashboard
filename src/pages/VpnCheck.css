@@ -124,3 +124,6 @@
     opacity: 1;
   }
 }
+.vpn-check-actions { display: flex; justify-content: center; gap: 12px; margin-top: 20px; }
+.vpn-check-actions button { padding: 10px 16px; cursor: pointer; }
+.vpn-fail-icon { color: #d97878; font-size: 48px; }

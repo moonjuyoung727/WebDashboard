@@ -16,9 +16,7 @@ import {
 
 import CameraCard from "../components/CameraCard";
 import CameraSourceBadge from "../components/CameraSourceBadge";
-import { EVENT_TYPE_META } from "../components/charts/chartColors";
-import { eventLogs } from "../data/eventLogs";
-import { getDeviceVpnList } from "../data/statisticsMock";
+import LoadStateNotice from "../components/LoadStateNotice";
 import useCameraList from "../hooks/useCameraList";
 import { formatMac, normalizeMac } from "../utils/mac";
 
@@ -35,40 +33,10 @@ const STATUS_FILTERS = [
   { key: "offline", label: "오프라인" },
 ];
 
-/* 대시보드와 같은 목업 소스 사용 — 보드 목록이 목업일 때만 덮어쓴다
-   (서버 데이터일 때는 서버가 준 vpn_status / latest_event_time을 그대로 쓴다) */
-
-// Device VPN 상태 (대시보드 WEB-F-003 과 동일)
-const VPN_STATUS_BY_ID = new Map(
-  getDeviceVpnList().map((device) => [device.cameraId, device.vpnStatus])
-);
-
-// 카메라별 가장 최근 이벤트 (대시보드 최근 발생 이벤트와 동일한 이벤트 로그)
-const LATEST_EVENT_BY_ID = eventLogs.reduce((map, event) => {
-  const prev = map.get(event.cameraId);
-
-  if (!prev || event.occurredAt > prev.occurredAt) {
-    map.set(event.cameraId, event);
-  }
-
-  return map;
-}, new Map());
-
-function formatRecentEvent(event) {
-  if (!event) {
-    return null;
-  }
-
-  const label = EVENT_TYPE_META[event.type]?.label ?? event.type;
-
-  return `${label} · ${event.occurredAt.replace("T", " ").slice(5, 16)}`;
-}
-
 function Multiview() {
 
   // 보드 목록 — 5초마다 자동 재조회 (status / last_seen 갱신)
-  const { cameras, source, fetchedAt } = useCameraList();
-  const isMockList = source === "loading" || source === "mock";
+  const { cameras, source, fetchedAt, errorMessage, isListReady } = useCameraList();
   const [channelCount, setChannelCount] = useState(6);
   const [currentPage, setCurrentPage] = useState(1);
   const [searchKeyword, setSearchKeyword] = useState("");
@@ -215,8 +183,8 @@ function Multiview() {
                 <span className="mv-stat-icon">{stat.icon}</span>
                 <span className="mv-stat-label">{stat.label}</span>
                 <strong>
-                  {stat.value}
-                  <small>대</small>
+                  {isListReady ? stat.value : "-"}
+                  {isListReady && <small>대</small>}
                 </strong>
               </div>
             ))}
@@ -288,16 +256,19 @@ function Multiview() {
           className="mv-grid"
           style={{ "--cols": cols, "--rows": rows }}
         >
+          {!isListReady && (
+            <LoadStateNotice
+              source={source}
+              subject="카메라 목록을"
+              message={errorMessage}
+              className="mv-grid-notice"
+            />
+          )}
+
           {currentCameras.map((camera) => (
             <CameraCard
               key={camera.device_id}
-              camera={{
-                ...camera,
-                vpn_status: isMockList
-                  ? VPN_STATUS_BY_ID.get(camera.device_id) ?? camera.vpn_status
-                  : camera.vpn_status,
-              }}
-              recentEvent={isMockList ? formatRecentEvent(LATEST_EVENT_BY_ID.get(camera.device_id)) : null}
+              camera={camera}
               channel={channelNo.get(camera.device_id)}
               now={now}
               highlighted={highlightId === camera.device_id}
@@ -306,7 +277,7 @@ function Multiview() {
             />
           ))}
 
-          {Array.from({ length: emptySlots }, (_, i) => (
+          {isListReady && Array.from({ length: emptySlots }, (_, i) => (
             <div key={`empty-${i}`} className="mv-empty-slot">
               <FiVideo />
               <span>
@@ -397,7 +368,7 @@ function Multiview() {
             );
           })}
 
-          {filteredCameras.length === 0 && (
+          {isListReady && filteredCameras.length === 0 && (
             <li className="mv-channel-empty">검색 결과가 없습니다.</li>
           )}
         </ul>

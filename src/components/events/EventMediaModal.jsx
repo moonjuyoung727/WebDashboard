@@ -1,56 +1,31 @@
 import { useState } from "react";
-import { FiDownload, FiImage, FiFilm, FiPlay, FiPause } from "react-icons/fi";
+import { FiDownload, FiImage, FiFilm } from "react-icons/fi";
 import Modal from "../Modal";
 import "../Modal.css";
-import "./EventMediaModal.css"; 
-// import { getEventMedia, downloadEventMedia } from "../../api/eventApi";  // 서버 연결 후 주석 해제
+import "./EventMediaModal.css";
+import { formatDateTime } from "../../utils/formatDateTime";
 
 // 이벤트 스냅샷 / 영상 상세 보기 및 다운로드 (WEB-F-032)
 function EventMediaModal({ event, initialTab = "snapshot", onClose }) {
   const [tab, setTab] = useState(initialTab);
   const [imageFailed, setImageFailed] = useState(false);
-  const [isPlaying, setIsPlaying] = useState(false);
-  const [downloadState, setDownloadState] = useState(null);
 
-  /* 서버 연결 후
-  const [media, setMedia] = useState(null);
-
-  useEffect(() => {
-    getEventMedia(event.id).then(setMedia).catch(console.error);
-  }, [event.id]);
-  */
-
-  const occurredAt = event.occurredAt.replace("T", " ").slice(0, 19);
-  const baseName = `event_${event.id}_${event.occurredAt.slice(0, 19).replace(/[-:T]/g, "")}`;
+  const occurredAt = formatDateTime(event.occurredAt);
+  const cameraLabel = event.location ? `${event.cameraName} (${event.location})` : event.cameraName;
 
   const hasVideo = Boolean(event.videoUrl);
 
+  // 2.3.1 목록 응답의 snapshot_url / clip_url로 받는다 (전용 다운로드 API는 명세에 없다)
+  const downloadUrl = tab === "snapshot" ? event.snapshotUrl : event.videoUrl;
+
   function handleDownload() {
-    setDownloadState("downloading");
+    const link = document.createElement("a");
 
-    // 시연용: 실제 파일이 없으므로 서버 연결 전에는 대체 파일 생성
-    setTimeout(() => {
-      if (tab === "snapshot") {
-        const svg = buildPlaceholderSvg(event, occurredAt);
-        saveBlob(new Blob([svg], { type: "image/svg+xml" }), `${baseName}.svg`);
-      } else {
-        const info = [
-          `event_id=${event.id}`,
-          `camera=${event.cameraName} (${event.location})`,
-          `occurred_at=${occurredAt}`,
-          "※ 서버 연결 전 시연용 파일입니다. 실제 연동 시 mp4 영상이 다운로드됩니다.",
-        ].join("\n");
-        saveBlob(new Blob([info], { type: "text/plain;charset=utf-8" }), `${baseName}_video.txt`);
-      }
-
-      setDownloadState("done");
-      setTimeout(() => setDownloadState(null), 1500);
-    }, 600);
-
-    /* 서버 연결 후
-    const blob = await downloadEventMedia(event.id, tab);
-    saveBlob(blob, tab === "snapshot" ? `${baseName}.jpg` : `${baseName}.mp4`);
-    */
+    link.href = downloadUrl;
+    link.download = `event_${event.id}_${tab}`;
+    link.target = "_blank";
+    link.rel = "noopener";
+    link.click();
   }
 
   return (
@@ -61,18 +36,16 @@ function EventMediaModal({ event, initialTab = "snapshot", onClose }) {
       footer={
         <>
           <span className="media-footer-info">
-            {event.cameraName} ({event.location}) · {occurredAt}
+            {cameraLabel} · {occurredAt}
           </span>
           <button
             type="button"
             className="btn primary"
             onClick={handleDownload}
-            disabled={downloadState === "downloading"}
+            disabled={!downloadUrl}
           >
             <FiDownload />
-            {downloadState === "downloading" && "다운로드 중..."}
-            {downloadState === "done" && "다운로드 완료"}
-            {!downloadState && (tab === "snapshot" ? "스냅샷 다운로드" : "영상 다운로드")}
+            {tab === "snapshot" ? "스냅샷 다운로드" : "영상 다운로드"}
           </button>
         </>
       }
@@ -105,7 +78,7 @@ function EventMediaModal({ event, initialTab = "snapshot", onClose }) {
           ) : (
             <div className="media-placeholder">
               <FiImage />
-              <span>스냅샷 미리보기</span>
+              <span>스냅샷을 불러올 수 없습니다.</span>
               <small>{occurredAt}</small>
             </div>
           )
@@ -115,20 +88,10 @@ function EventMediaModal({ event, initialTab = "snapshot", onClose }) {
           hasVideo ? (
             <video src={event.videoUrl} controls autoPlay />
           ) : (
-            // 시연용 가짜 플레이어
-            <div className="media-placeholder video">
-              <button
-                type="button"
-                className="media-play"
-                onClick={() => setIsPlaying((prev) => !prev)}
-                aria-label={isPlaying ? "일시정지" : "재생"}
-              >
-                {isPlaying ? <FiPause /> : <FiPlay />}
-              </button>
-              <span>이벤트 전후 영상 (-10초 ~ +20초)</span>
-              <div className="media-progress">
-                <div className={`media-progress-fill ${isPlaying ? "playing" : ""}`} />
-              </div>
+            <div className="media-placeholder">
+              <FiFilm />
+              <span>이 이벤트에는 저장된 영상이 없습니다.</span>
+              <small>{occurredAt}</small>
             </div>
           )
         )}
@@ -141,24 +104,5 @@ function EventMediaModal({ event, initialTab = "snapshot", onClose }) {
   );
 }
 
-
-function buildPlaceholderSvg(event, occurredAt) {
-  return `<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="720">
-  <rect width="100%" height="100%" fill="#111316"/>
-  <text x="640" y="350" fill="#BDD9D7" font-size="36" text-anchor="middle" font-family="sans-serif">Event #${event.id} Snapshot</text>
-  <text x="640" y="400" fill="#9ba4ac" font-size="22" text-anchor="middle" font-family="sans-serif">${event.cameraName} · ${occurredAt}</text>
-</svg>`;
-}
-
-function saveBlob(blob, fileName) {
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement("a");
-
-  link.href = url;
-  link.download = fileName;
-  link.click();
-
-  URL.revokeObjectURL(url);
-}
 
 export default EventMediaModal;

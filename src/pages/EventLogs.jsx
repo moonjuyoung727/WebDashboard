@@ -2,7 +2,10 @@ import "./EventLogs.css";
 import Pagination from "../components/Pagination";
 import DatePicker from "../components/DatePicker";
 import useFitPagination from "../hooks/useFitPagination";
-import { EVENT_TYPE_META } from "../components/charts/chartColors";
+import LoadStateNotice from "../components/LoadStateNotice";
+import { EVENT_TYPES, getEventTypeMeta } from "../components/charts/chartColors";
+import useServerResource from "../hooks/useServerResource";
+import { formatDateTime } from "../utils/formatDateTime";
 
 import { useEffect, useMemo, useState } from "react";
 
@@ -30,11 +33,11 @@ import {
   FiVideoOff,
 } from "react-icons/fi";
 
-import { eventLogs as initialEventLogs } from "../data/eventLogs";
-// import { getEvents } from "../api/eventApi";  // 서버 연결 후 주석 해제
-// import { bulkUpdateEventStatus } from "../api/eventApi";  // 서버 연결 후 주석 해제 (WEB-F-033)
+import { getAllEvents, updateEvent, bulkUpdateEventStatus } from "../api/eventApi";
 import EventMediaModal from "../components/events/EventMediaModal";
 import "../components/Modal.css";
+
+const EVENT_POLL_MS = 30000;
 
 
 // 기간 선택 버튼 (days: 오늘을 포함해 며칠 전부터인지, 대시보드 기간 선택과 같은 기준)
@@ -51,10 +54,7 @@ function toDateValue(date) {
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
 }
 
-/*
-  선택한 기간 → { from, to } ("YYYY-MM-DD", 양 끝 포함)
-  서버 연결 후에는 이 값을 조회 조건으로 넘기면 됨  예) getEvents({ startDate: from, endDate: to }) → /events?start_date=…&end_date=…
-*/
+// 선택한 기간 → { from, to } ("YYYY-MM-DD", 양 끝 포함). 서버 조회 조건(start_date / end_date)으로 쓴다
 function getPeriodRange(period, customDate) {
   if (period === "custom" && customDate) {
     return { from: customDate, to: customDate };
@@ -71,10 +71,24 @@ function getPeriodRange(period, customDate) {
 
 
 function EventLogs() {
-  const [events, setEvents] = useState(initialEventLogs);
-
   const [period, setPeriod] = useState("today");
   const [customDate, setCustomDate] = useState("");
+
+  const { from, to } = getPeriodRange(period, customDate);
+
+  // 이벤트 목록 (ICD 2.3.1) — 기간이 바뀌면 다시 조회한다
+  const {
+    data,
+    source,
+    errorMessage,
+    isReady,
+    setData: setEvents,
+  } = useServerResource(
+    ({ silent }) => getAllEvents({ startDate: from, endDate: to, silent }),
+    { pollMs: EVENT_POLL_MS, key: `${from}_${to}` }
+  );
+
+  const events = useMemo(() => data ?? [], [data]);
 
   const [selectedEvent, setSelectedEvent] = useState(null);
 
@@ -91,31 +105,25 @@ function EventLogs() {
   // WEB-F-032 미디어 상세 보기 (snapshot | video)
   const [mediaTab, setMediaTab] = useState(null);
 
-  /*
-  const [events, setEvents] = useState([]);
+  // 필터 선택지는 서버에서 받은 이벤트 기준
+  const cameraOptions = useMemo(() => {
+    const options = new Map();
 
-  useEffect(() => {
-    async function loadEvents() {
-      try {
-        const data = await getEvents();
+    events.forEach((event) => {
+      options.set(String(event.cameraId), event.cameraName || String(event.cameraId));
+    });
 
-        setEvents(data.items);
-      } catch (error) {
-        console.error(error);
-      }
-    }
-    loadEvents();
-  }, []);
-  */
+    return [...options];
+  }, [events]);
 
+  const typeOptions = useMemo(
+    () => [...new Set([...EVENT_TYPES, ...events.map((event) => event.type)])],
+    [events]
+  );
+
+  // 기간은 서버 조회 조건이고, 나머지 조건만 화면에서 거른다
   const filteredEvents = useMemo(() => {
-    const { from, to } = getPeriodRange(period, customDate);
-
     return events.filter((event) => {
-      // 발생 날짜가 선택한 기간 안에 있는지 (문자열 비교, YYYY-MM-DD)
-      const eventDate = event.occurredAt.slice(0, 10);
-      const matchPeriod = eventDate >= from && eventDate <= to;
-
       const matchCamera =
         cameraFilter === "all" ||
         String(event.cameraId) === cameraFilter;
@@ -136,7 +144,6 @@ function EventLogs() {
         event.description.toLowerCase().includes(keyword);
 
       return (
-        matchPeriod &&
         matchCamera &&
         matchType &&
         matchStatus &&
@@ -145,8 +152,6 @@ function EventLogs() {
     });
   }, [
     events,
-    period,
-    customDate,
     cameraFilter,
     typeFilter,
     statusFilter,
@@ -174,45 +179,54 @@ function EventLogs() {
     setCurrentPage,
   ]);
 
+  // 기간을 바꾸면 목록이 새로 오므로 이전 기간의 선택은 비운다
+  useEffect(() => {
+    setCheckedIds([]);
+    setSelectedEvent(null);
+  }, [from, to]);
+
   function handleSelectEvent(event) {
     setSelectedEvent(event);
     setMemo(event.memo ?? "");
   }
 
 
-  function handleStatusChange(status) {
+  // 서버 반영(2.3.2)이 끝난 뒤에 화면을 바꾼다. 실패하면 toApiError가 오류 토스트를 띄운다
+  async function applyEventChange(changes) {
     if (!selectedEvent) return;
+
+    const eventId = selectedEvent.id;
+
+    try {
+      await updateEvent(eventId, changes);
+    } catch (error) {
+      console.error(error);
+      return;
+    }
 
     setEvents((prev) =>
       prev.map((event) =>
-        event.id === selectedEvent.id
-          ? { ...event, status }
+        event.id === eventId
+          ? { ...event, ...changes }
           : event
       )
     );
 
-    setSelectedEvent((prev) => ({
-      ...prev,
-      status,
-    }));
+    setSelectedEvent((prev) =>
+      prev?.id === eventId
+        ? { ...prev, ...changes }
+        : prev
+    );
+  }
+
+
+  function handleStatusChange(status) {
+    applyEventChange({ status });
   }
 
 
   function handleSaveMemo() {
-    if (!selectedEvent) return;
-
-    setEvents((prev) =>
-      prev.map((event) =>
-        event.id === selectedEvent.id
-          ? { ...event, memo }
-          : event
-      )
-    );
-
-    setSelectedEvent((prev) => ({
-      ...prev,
-      memo,
-    }));
+    applyEventChange({ memo });
   }
 
 
@@ -240,29 +254,25 @@ function EventLogs() {
     );
   }
 
-  function handleBulkStatusChange(status) {
+  // 서버에서 성공한 이벤트만 화면에 반영하고, 실패한 이벤트는 선택을 남겨 다시 시도할 수 있게 한다
+  async function handleBulkStatusChange(status) {
+    const { updatedIds, failedIds } = await bulkUpdateEventStatus(checkedIds, status);
+
     setEvents((prev) =>
       prev.map((event) =>
-        checkedIds.includes(event.id)
+        updatedIds.includes(event.id)
           ? { ...event, status }
           : event
       )
     );
 
-    if (selectedEvent && checkedIds.includes(selectedEvent.id)) {
-      setSelectedEvent((prev) => ({ ...prev, status }));
-    }
+    setSelectedEvent((prev) =>
+      prev && updatedIds.includes(prev.id)
+        ? { ...prev, status }
+        : prev
+    );
 
-    setCheckedIds([]);
-
-    /* 서버 연결 후
-    try {
-      const result = await bulkUpdateEventStatus(checkedIds, status);
-      // result.updatedIds 기준으로 상태 반영
-    } catch (error) {
-      console.error(error);
-    }
-    */
+    setCheckedIds(failedIds);
   }
 
 
@@ -356,11 +366,9 @@ function EventLogs() {
             onChange={(e) => setCameraFilter(e.target.value)}
           >
             <option value="all">전체 카메라</option>
-            <option value="CAM-0001">CAM-01</option>
-            <option value="CAM-0002">CAM-02</option>
-            <option value="CAM-0003">CAM-03</option>
-            <option value="CAM-0004">CAM-04</option>
-            <option value="CAM-0005">CAM-05</option>
+            {cameraOptions.map(([id, name]) => (
+              <option key={id} value={id}>{name}</option>
+            ))}
           </select>
         </div>
 
@@ -376,18 +384,9 @@ function EventLogs() {
             onChange={(e) => setTypeFilter(e.target.value)}
           >
             <option value="all">전체</option>
-            <option value="motion">움직임 감지</option>
-            <option value="sound">소리 감지</option>
-            <option value="vpn_connect">VPN 연결</option>
-            <option value="vpn_disconnect">
-              VPN 연결 끊김
-            </option>
-            <option value="camera_connect">
-              카메라 연결
-            </option>
-            <option value="camera_disconnect">
-              카메라 연결 끊김
-            </option>
+            {typeOptions.map((type) => (
+              <option key={type} value={type}>{getEventLabel(type)}</option>
+            ))}
           </select>
         </div>
 
@@ -459,7 +458,11 @@ function EventLogs() {
 
       {/* 테이블 */}
       <div className="event-table-area" ref={tableAreaRef}>
-        <div className="event-table-wrapper">
+        {!isReady && (
+          <LoadStateNotice source={source} subject="이벤트 로그를" message={errorMessage} />
+        )}
+
+        {isReady && <div className="event-table-wrapper">
 
           <table className="event-table">
 
@@ -481,6 +484,12 @@ function EventLogs() {
             </thead>
 
             <tbody>
+              {currentEvents.length === 0 && (
+                <tr>
+                  <td colSpan={5}>조건에 맞는 이벤트가 없습니다.</td>
+                </tr>
+              )}
+
               {currentEvents.map((event) => (
                 <tr
                   key={event.id}
@@ -505,7 +514,7 @@ function EventLogs() {
                   <td>{formatDateTime(event.occurredAt)}</td>
 
                   <td>
-                    {event.cameraName} ({event.location})
+                    {getCameraLabel(event)}
                   </td>
 
                   <td>
@@ -533,7 +542,7 @@ function EventLogs() {
 
           </table>
 
-        </div>
+        </div>}
       </div>
 
 
@@ -577,9 +586,7 @@ function EventLogs() {
           <div className="detail-info-row">
             <span><FiVideo />카메라 이름</span>
             <strong>
-              {selectedEvent.cameraName}
-              {" "}
-              ({selectedEvent.location})
+              {getCameraLabel(selectedEvent)}
             </strong>
           </div>
 
@@ -597,7 +604,7 @@ function EventLogs() {
             <span><FiAlignLeft />상세 설명</span>
 
             <p>
-              {selectedEvent.description}
+              {selectedEvent.description || "-"}
             </p>
           </div>
 
@@ -708,16 +715,14 @@ function EventLogs() {
 
 
 function getEventLabel(type) {
-  const labels = {
-    motion: "움직임 감지",
-    sound: "소리 감지",
-    vpn_connect: "VPN 연결",
-    vpn_disconnect: "VPN 연결 끊김",
-    camera_connect: "카메라 연결",
-    camera_disconnect: "카메라 연결 끊김",
-  };
+  return getEventTypeMeta(type).label;
+}
 
-  return labels[type] ?? type;
+
+function getCameraLabel(event) {
+  return event.location
+    ? `${event.cameraName} (${event.location})`
+    : event.cameraName;
 }
 
 
@@ -741,6 +746,12 @@ function getEventIcon(type) {
     case "camera_disconnect":
       return <FiVideoOff />;
 
+    case "connection":
+      return <FiShield />;
+
+    case "system":
+      return <FiAlertCircle />;
+
     default:
       return null;
   }
@@ -752,18 +763,11 @@ function EventTypeIcon({ type }) {
   return (
     <span
       className="event-type-icon"
-      style={{ "--type-color": EVENT_TYPE_META[type]?.color }}
+      style={{ "--type-color": getEventTypeMeta(type).color }}
     >
       {getEventIcon(type)}
     </span>
   );
-}
-
-
-function formatDateTime(dateString) {
-  return dateString
-    .replace("T", " ")
-    .slice(0, 19);
 }
 
 

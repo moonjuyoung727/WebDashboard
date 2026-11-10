@@ -25,9 +25,14 @@ function CameraRegisterModal({ onClose, onRegister, registeredMacs = [] }) {
   const [ errorMessage, setErrorMessage ] = useState("");
   const [ submitted, setSubmitted ] = useState(false);
   const [ cameraNameError, setCameraNameError ] = useState("");
+  const [ isSubmitting, setIsSubmitting ] = useState(false);
 
-  function handleSubmit(event) {
+  async function handleSubmit(event) {
     event.preventDefault();
+
+    if (isSubmitting) {
+      return;
+    }
 
     setSubmitted(true);
 
@@ -65,7 +70,15 @@ function CameraRegisterModal({ onClose, onRegister, registeredMacs = [] }) {
       location: location.trim() || "미설정",
     };
 
-    onRegister(newCamera);
+    // 서버 등록이 실패하면 모달을 닫지 않고 오류 메시지를 보여 준다
+    // (성공하면 부모가 모달을 닫아서 이 컴포넌트가 사라진다)
+    setIsSubmitting(true);
+    try {
+      await onRegister(newCamera);
+    } catch (error) {
+      setErrorMessage(error?.message || "카메라 등록에 실패했습니다.");
+      setIsSubmitting(false);
+    }
   }
 
   return (
@@ -220,8 +233,9 @@ function CameraRegisterModal({ onClose, onRegister, registeredMacs = [] }) {
             <button
               type="submit"
               className="confirm-register-button"
+              disabled={isSubmitting}
             >
-              등록
+              {isSubmitting ? "등록 중..." : "등록"}
             </button>
           </div>
         </form>

@@ -58,13 +58,14 @@ function PrivacyZoneModal({ camera, onClose, onSaved }) {
             onClick={handleSave}
             disabled={saveState !== "idle"}
           >
-            {saveState === "saving" && "보드에 적용 중..."}
-            {saveState === "done" && "적용 완료"}
+            {saveState === "saving" && "미리보기 저장 중..."}
+            {saveState === "done" && "미리보기 저장 완료"}
             {saveState === "idle" && "저장"}
           </button>
         </>
       }
     >
+      <p role="note">영역 편집 미리보기입니다. 서버·보드 마스킹에는 적용되지 않습니다.</p>
       <PrivacyZoneEditor zones={zones} onChange={setZones} cameraName={camera.name} />
     </Modal>
   );

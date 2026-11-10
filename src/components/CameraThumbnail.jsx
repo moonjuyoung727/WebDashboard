@@ -17,7 +17,8 @@ function resolveThumbnailUrl(url) {
   }
 
   try {
-    return new URL(text, `${API_BASE_URL}/`).href;
+    // API_BASE_URL이 /v1처럼 상대 주소여도 동작하도록 현재 페이지를 기준으로 완성한다
+    return new URL(text, new URL(`${API_BASE_URL}/`, window.location.href)).href;
   } catch {
     return null;
   }

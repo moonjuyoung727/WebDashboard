@@ -1,268 +1,263 @@
-import { useState } from "react";
-import useVpnConnections from "../hooks/useVpnConnections";
-import Pagination from "../components/Pagination";
-import useFitPagination from "../hooks/useFitPagination";
-import Toggle from "../components/Toggle";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useNavigate } from "react-router-dom";
+import Pagination from "../components/Pagination";
 import VpnSummary from "../components/vpn/VpnSummary";
 import VpnDeviceTable from "../components/vpn/VpnDeviceTable";
-import { useVpn } from "../context/VpnContext";
-import { VPN_STATUS_META } from "../components/charts/chartColors";
 import VpnDeviceDetailModal from "../components/vpn/VpnDeviceDetailModal";
-import { requestVpnRecovery } from "../api/vpnApi";
-// import { fetchClientVpnStatus } from "../api/vpnApi";  // 서버 연결 후 주석 해제
+import useFitPagination from "../hooks/useFitPagination";
+import { useVpn } from "../context/VpnContext";
+import { vpnApi, loadVpnData } from "../api/vpnApi";
+import { setAuthToken } from "../api/client";
 import "./VpnManage.css";
 
-/* VPN 연결 상태 목록 (ICD 2.5.1 GET /vpn/connections) 서버 연동 스위치
-   - false (지금): 서버에 요청하지 않고 목업(data/vpnDevices.js) 표시, 복구 · 새로고침도 화면에서만 동작
-   - true: 화면에 있는 동안 5초마다 목록 재조회, 복구 요청은 POST /vpn/connections/{mac}/recover 후 바로 재조회 */
-const VPN_API_ENABLED = false;
+function errorMessage(error) {
+  if (error.name === "TimeoutError")
+    return "VPN 서버 응답 시간이 초과되었습니다. 연결 상태를 확인하고 다시 시도해주세요.";
+  if (error instanceof TypeError)
+    return "VPN 서버에 접근할 수 없습니다. WireGuard 앱과 네트워크 연결을 확인해주세요.";
+  return error.message || "VPN 요청을 처리하지 못했습니다.";
+}
 
 function VpnManage() {
   const navigate = useNavigate();
-    const { peerVpnStatus, setPeerVpnStatus } = useVpn();
-    const {
-        devices,
-        setDevices,
-        fetchedAt,
-        isFetching: refreshing,
-        refresh,
-    } = useVpnConnections({ enabled: VPN_API_ENABLED });
-    const [ searchKeyword, setSearchKeyword ] = useState("");
-    const [ statusFilter, setStatusFilter ] = useState("all");
-    const lastUpdated = fetchedAt.toLocaleString();
+  const { setPeerVpnStatus } = useVpn();
+  const [selectedId, setSelectedId] = useState(null);
+  const [devices, setDevices] = useState([]);
+  const [server, setServer] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [loadError, setLoadError] = useState("");
+  const [actionError, setActionError] = useState("");
+  const [notice, setNotice] = useState("");
+  const [pending, setPending] = useState(null);
+  const [lastUpdated, setLastUpdated] = useState(null);
+  const [searchKeyword, setSearchKeyword] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
+  const mounted = useRef(false);
+  const fetchController = useRef(null);
+  const actionController = useRef(null);
+  const mutationBusy = useRef(false);
 
-    // WEB-F-054 상세 정보 모달
-    const [ selectedDevice, setSelectedDevice ] = useState(null);
+  const handleUnauthorized = useCallback(
+    (error) => {
+      if (error.status !== 401) return false;
+      setAuthToken(null);
+      navigate("/login", { replace: true });
+      return true;
+    },
+    [navigate],
+  );
 
-    /* 상태 요약 */
-    const totalDevices = devices.length;
-
-    const connectedDevices = devices.filter(
-        (device) => device.vpnStatus === "connected"
-    ).length;
-
-    const disconnectedDevices = devices.filter(
-        (device) => device.vpnStatus === "disconnected"
-    ).length;
-
-    const errorDevices = devices.filter(
-        (device) => device.vpnStatus === "error"
-    ).length;
-
-    /* 검색, 필터 */
-    const filteredDevices = devices.filter((devices) => {
-        const keyword = searchKeyword.toLowerCase();
-        
-        const matchesSearch = 
-            devices.name.toLowerCase().includes(keyword) ||
-            devices.serial.toLowerCase().includes(keyword);
-        
-        const matchesStatus = 
-            statusFilter === "all" ||
-            devices.vpnStatus === statusFilter;
-        return matchesSearch && matchesStatus;
-    });
-
-    /* pagination: 화면 높이에 들어가는 만큼만 한 페이지에 표시 */
-    const {
-        areaRef: tableAreaRef,
-        pageItems: currentDevices,
-        page: currentPage,
-        setPage: setCurrentPage,
-        totalPages,
-    } = useFitPagination(filteredDevices);
-
-    /* search */
-    function handleSearchChange(e) {
-        setSearchKeyword(e.target.value);
-        setCurrentPage(1);
-    }
-
-    /* filter */
-    function handleStatusChange(e) {
-        setStatusFilter(e.target.value);
-        setCurrentPage(1);
-    }
-
-    function handleFilterReset() {
-        setSearchKeyword("");
-        setStatusFilter("all");
-        setCurrentPage(1);
-    }
-
-    /* 복구 요청 */
-    async function handleConnection(deviceId) {
-        // 서버 연동 시: 복구 요청(POST /vpn/connections/{mac}/recover) 뒤 목록을 바로 다시 받는다
-        // (서버 데이터의 deviceId는 MAC 주소)
-        if (VPN_API_ENABLED) {
-            try {
-                await requestVpnRecovery(deviceId);
-                await refresh();
-            } catch (error) {
-                console.error(error);
-            }
-            return;
-        }
-
-        // 서버 연결 전: 화면에서만 연결 / 끊김을 바꾼다
-        setDevices((prev) => 
-            prev.map((device) => {
-                if (device.id !== deviceId) {
-                    return device;
-                }
-                const isConnected = 
-                    device.vpnStatus === "connected";
-                return {
-                    ...device,
-                    vpnStatus: isConnected
-                        ? "disconnected"
-                        : "connected",
-                    duration: isConnected
-                        ? "-"
-                        : "방금 연결됨",
-                    vpnIp: isConnected
-                        ? "-"
-                        : device.assignedIp ?? "-",
-                    lastHandshake: isConnected
-                        ? "-"
-                        : new Date().toLocaleString(),
-                    error: null
-                };
-            })
-        );
-    }
-
-    /* auto connect toggle */
-    function handleToggle(deviceId, key) {
-        setDevices((prev) => 
-            prev.map((device) =>
-              device.id === deviceId
-                ? {
-                    ...device,
-                    [key]: !device[key]
-                  }
-                : device
-            ) 
-        );
-    }
-
-    async function handlePeerReconnect() {
-      setPeerVpnStatus("connecting");
-      try {
-
-        /*  실제 서버 연동 시 사용
-        // 브라우저는 WireGuard를 직접 켤 수 없어서(ICD 2.8 [TBR]) OS WireGuard 앱으로 연결한 뒤 연결 여부만 다시 확인한다
-        const connected = await fetchClientVpnStatus();
-
-        if (connected) {
-          setPeerVpnStatus("connected");
-
-          setTimeout(() => {
-            navigate("/dashboard", {replace: true});
-          }, 1200);
-        } else {
-          setPeerVpnStatus("error");
-        }  */
-
-        //현재 테스트용
-
-        setTimeout(() => {
-          const connectSuccess = true;
-
-          if (connectSuccess) {
-            setPeerVpnStatus("connected");
-          } else {
-            setPeerVpnStatus("error");
-          }
-        }, 1500);
-  
-      } catch (error) {
-        console.error("VPN 연결 실패:", error);
-
-        setPeerVpnStatus("error");
+  const fetchVpnData = useCallback(async () => {
+    fetchController.current?.abort();
+    const controller = new AbortController();
+    fetchController.current = controller;
+    setRefreshing(true);
+    try {
+      const data = await loadVpnData({ signal: controller.signal });
+      if (!mounted.current || controller.signal.aborted) return;
+      setDevices(data.devices);
+      setServer(data.server);
+      setPeerVpnStatus("connected");
+      setLoadError("");
+      setLastUpdated(new Date().toLocaleString());
+    } catch (error) {
+      if (!mounted.current || controller.signal.aborted) return;
+      if (!handleUnauthorized(error)) { setLoadError(errorMessage(error)); setPeerVpnStatus("error"); }
+    } finally {
+      if (fetchController.current === controller) fetchController.current = null;
+      if (mounted.current && !controller.signal.aborted) {
+        setLoading(false);
+        setRefreshing(false);
       }
     }
+  }, [handleUnauthorized, setPeerVpnStatus]);
 
+  useEffect(() => {
+    mounted.current = true;
+    fetchVpnData();
+    const timer = setInterval(() => {
+      if (!mutationBusy.current && !fetchController.current && !document.hidden) fetchVpnData();
+    }, 10000);
+    return () => {
+      mounted.current = false;
+      clearInterval(timer);
+      fetchController.current?.abort();
+      actionController.current?.abort();
+    };
+  }, [fetchVpnData]);
 
-    /* 새로고침 버튼: 서버 연동 시 GET /vpn/connections, 서버 연결 전에는 임시 새로고침 효과 */
-    function handleRefresh() {
-      refresh();
+  async function performAction(device, action) {
+    if (mutationBusy.current) return;
+    mutationBusy.current = true;
+    fetchController.current?.abort();
+    const controller = new AbortController();
+    actionController.current = controller;
+    setPending({ id: device.id, action });
+    setActionError("");
+    setNotice("");
+    try {
+      const result =
+        action === "recover"
+          ? await vpnApi.recoverVpnConnection(device.id, {
+              signal: controller.signal,
+            })
+          : await vpnApi.executeVpnAction(device.id, action, {
+              signal: controller.signal,
+            });
+      if (!mounted.current || controller.signal.aborted) return;
+      if (result?.success !== true)
+        throw new Error("서버에서 VPN 요청을 완료하지 못했습니다.");
+      setNotice(
+        `${device.name}: ${action === "recover" ? "복구" : action === "connect" ? "연결" : "연결 해제"} 요청을 처리했습니다.`,
+      );
+      await fetchVpnData();
+    } catch (error) {
+      if (
+        mounted.current &&
+        !controller.signal.aborted &&
+        !handleUnauthorized(error)
+      )
+        setActionError(errorMessage(error));
+    } finally {
+      mutationBusy.current = false;
+      if (mounted.current) {
+        setPending(null);
+        setRefreshing(false);
+      }
     }
+  }
 
+  const filteredDevices = devices.filter((device) => {
+    const keyword = searchKeyword.trim().toLowerCase();
     return (
-      <main className="vpn-page">
-
-        {/* Client VPN 연결 + 카메라 VPN 상태 요약 */}
-        <VpnSummary
-          peerStatus={peerVpnStatus}
-          onPeerReconnect={handlePeerReconnect}
-          totalDevices={totalDevices}
-          connectedDevices={connectedDevices}
-          disconnectedDevices={disconnectedDevices}
-          errorDevices={errorDevices}
-          refreshing={refreshing}
-          lastUpdated={lastUpdated}
-          onRefresh={handleRefresh}
-        />
-
-        <section className="vpn-table-section">
-          <div className="vpn-toolbar">
-            <input
-              type="text"
-              placeholder="카메라 이름 또는 시리얼 번호 검색"
-              value={searchKeyword}
-              onChange={handleSearchChange}
-            />
-
-            <select
-              value={statusFilter}
-              onChange={handleStatusChange}
-            >
-              <option value="all">
-                연결 상태 전체
-              </option>
-              {Object.entries(VPN_STATUS_META).map(([key, meta]) => (
-                <option key={key} value={key}>
-                  {meta.label}
-                </option>
-              ))}
-            </select>
-            <button
-              type="button"
-              className="filter-reset-button"
-              onClick={handleFilterReset}
-            >
-              필터 초기화
-            </button>
-          </div>
-
-          <div className="vpn-table-area" ref={tableAreaRef}>
-            <VpnDeviceTable
-              devices={currentDevices}
-              onToggle={handleToggle}
-              onRecoveryRequest={handleConnection}
-              onSelect={setSelectedDevice}
-            />
-          </div>
-
-          <Pagination
-            currentPage={currentPage}
-            totalPages={totalPages}
-            onPageChange={setCurrentPage}
-            totalItems={filteredDevices.length}
-            itemLabel="대"
-          />
-        </section>
-
-        {selectedDevice && (
-          <VpnDeviceDetailModal
-            device={selectedDevice}
-            onClose={() => setSelectedDevice(null)}
-          />
-        )}
-      </main>
+      [device.name, device.mac, device.id].some((value) =>
+        value.toLowerCase().includes(keyword),
+      ) &&
+      (statusFilter === "all" || device.vpnStatus === statusFilter)
     );
-}
+  });
+  const { areaRef: tableAreaRef, pageItems: currentDevices, page, setPage: setCurrentPage, totalPages } = useFitPagination(filteredDevices);
+  const selectedDevice = devices.find((device) => device.id === selectedId);
+  const unavailable =
+    loading || refreshing || Boolean(pending) || Boolean(loadError);
 
+  return (
+    <main
+      className="vpn-page"
+      aria-busy={loading || refreshing || Boolean(pending)}
+    >
+      {loadError && (
+        <p className="vpn-feedback error" role="alert">
+          {loadError}
+          {lastUpdated ? " 아래 목록은 마지막으로 조회한 상태입니다." : ""}
+        </p>
+      )}
+      {actionError && (
+        <p className="vpn-feedback error" role="alert">
+          {actionError}
+        </p>
+      )}
+      {notice && (
+        <p className="vpn-feedback" role="status">
+          {notice}
+        </p>
+      )}
+      {loading && <p role="status">VPN 연결 정보를 불러오고 있습니다...</p>}
+      <VpnSummary
+        onPeerReconnect={fetchVpnData}
+        simulated={server?.driver_mode === "virtual"}
+        peerStatus={loading ? "connecting" : loadError ? "error" : server ? "connected" : "disconnected"}
+        totalDevices={devices.length}
+        connectedDevices={
+          devices.filter((d) => d.vpnStatus === "connected").length
+        }
+        disconnectedDevices={
+          devices.filter((d) => d.vpnStatus === "disconnected").length
+        }
+        errorDevices={devices.filter((d) => d.vpnStatus === "error").length}
+        refreshing={refreshing}
+        disabled={refreshing || Boolean(pending)}
+        lastUpdated={lastUpdated || "아직 조회되지 않음"}
+        onRefresh={fetchVpnData}
+      />
+      <section className="vpn-table-section">
+        <div className="vpn-toolbar">
+          <input
+            aria-label="VPN 카메라 검색"
+            type="search"
+            placeholder="카메라 이름, MAC 또는 기기 ID 검색"
+            value={searchKeyword}
+            onChange={(event) => {
+              setSearchKeyword(event.target.value);
+              setCurrentPage(1);
+            }}
+          />
+          <select
+            aria-label="VPN 연결 상태 필터"
+            value={statusFilter}
+            onChange={(event) => {
+              setStatusFilter(event.target.value);
+              setCurrentPage(1);
+            }}
+          >
+            <option value="all">연결 상태 전체</option>
+            <option value="connected">연결됨</option>
+            <option value="disconnected">연결 안 됨</option>
+            <option value="error">연결 오류</option>
+          </select>
+          <button
+            type="button"
+            className="filter-reset-button"
+            onClick={() => {
+              setSearchKeyword("");
+              setStatusFilter("all");
+              setCurrentPage(1);
+            }}
+          >
+            필터 초기화
+          </button>
+        </div>
+        <div className="vpn-table-area" ref={tableAreaRef}>
+        <VpnDeviceTable
+          onSelect={(device) => setSelectedId(device.id)}
+          devices={currentDevices}
+          pending={pending}
+          disabled={unavailable}
+          emptyMessage={
+            loading
+              ? "조회 중입니다."
+              : loadError && !lastUpdated
+                ? "연결 정보를 조회하지 못했습니다."
+                : devices.length
+                  ? "검색 조건에 맞는 카메라가 없습니다."
+                  : "등록된 카메라 VPN 기기가 없습니다."
+          }
+          onConnection={(id) => {
+            const device = devices.find((d) => d.id === id);
+            if (device)
+              performAction(
+                device,
+                device.vpnStatus === "connected" ? "disconnect" : "connect",
+              );
+          }}
+          onRecoveryRequest={(id) => {
+            const device = devices.find((d) => d.id === id);
+            if (device) performAction(device, "recover");
+          }}
+        />
+        </div>
+        <Pagination
+          currentPage={page}
+          totalPages={totalPages}
+          onPageChange={setCurrentPage}
+          totalItems={filteredDevices.length}
+          itemLabel="대"
+        />
+      </section>
+      {selectedDevice && <VpnDeviceDetailModal device={selectedDevice} onClose={() => setSelectedId(null)}
+        onRecoveryRequest={unavailable ? undefined : (id) => { const device = devices.find((item) => item.id === id); if (device) performAction(device, "recover"); }} />}
+    </main>
+  );
+}
 export default VpnManage;

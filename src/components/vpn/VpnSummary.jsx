@@ -11,8 +11,8 @@ import { VPN_STATUS_META } from "../charts/chartColors";
 
 // Client VPN(이 PC) 상태 문구
 const PEER_STATUS_TEXT = {
-  connected: { label: "연결됨", message: "VPN이 연결되었습니다." },
-  connecting: { label: "연결 중", message: "VPN 연결을 시도하고 있습니다..." },
+  connected: { label: "서버 응답 정상", message: "터널 상태는 WireGuard 앱에서 확인해주세요." },
+  connecting: { label: "확인 중", message: "VPN 서버 응답을 확인하고 있습니다..." },
   error: { label: "연결 오류", message: "VPN 연결에 실패했습니다. 다시 시도해주세요." },
   disconnected: { label: "연결 안 됨", message: "VPN이 연결되어 있지 않습니다." },
 };
@@ -25,7 +25,10 @@ function VpnSummary({
   connectedDevices,
   disconnectedDevices,
   errorDevices,
+  isReady = true,
   refreshing,
+  disabled,
+  simulated,
   lastUpdated,
   onRefresh
 }) {
@@ -48,22 +51,23 @@ function VpnSummary({
         </span>
 
         <div className="vpn-peer-text">
-          <span className="vpn-peer-caption">클라이언트 VPN · 이 PC</span>
+          <span className="vpn-peer-caption">VPN 서버 접근</span>
           <strong className="vpn-peer-label">
             {peerStatus === "connecting" && <span className="vpn-peer-spinner" />}
             {peer.label}
           </strong>
           <small className="vpn-peer-message">{peer.message}</small>
+          {simulated && <small className="vpn-peer-message">개발용 가상 VPN 상태입니다. 실제 터널 연결 상태와 다릅니다.</small>}
         </div>
 
-        {/* <button
+        <button
           type="button"
           className="peer-connect-button"
           onClick={onPeerReconnect}
-          disabled={peerStatus === "connecting" || peerStatus === "connected"}
+          disabled={disabled || peerStatus === "connecting"}
         >
-          VPN 연결 재시도
-        </button> */}
+          상태 다시 확인
+        </button>
       </div>
 
       {/* 카메라 VPN 상태 요약 */}
@@ -78,8 +82,8 @@ function VpnSummary({
               <div className="vpn-summary-item-text">
                 <span className="vpn-summary-item-label">{stat.label}</span>
                 <strong>
-                  {stat.value}
-                  <small>대</small>
+                  {isReady ? stat.value : "-"}
+                  {isReady && <small>대</small>}
                 </strong>
               </div>
             </div>
@@ -93,6 +97,7 @@ function VpnSummary({
           type="button"
           className="vpn-refresh-button"
           onClick={onRefresh}
+          disabled={disabled}
         >
           <span
             className={`refresh-icon-wrapper ${refreshing ? "spinning" : ""}`}

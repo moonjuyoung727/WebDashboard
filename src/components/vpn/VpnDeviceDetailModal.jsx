@@ -34,9 +34,6 @@ function VpnDeviceDetailModal({ device, onClose, onRecoveryRequest }) {
     { label: "시리얼 번호", value: device.serial || device.serialNumber || "-" },
   ];
 
-  // 시연용 연결 이력
-  const history = buildHistory(device);
-
   return (
     <Modal
       title={`Device VPN 상세 · ${device.name}`}
@@ -84,50 +81,9 @@ function VpnDeviceDetailModal({ device, onClose, onRecoveryRequest }) {
           <p className="vpn-detail-empty">최근 오류가 없습니다.</p>
         )}
       </div>
-
-      <div className="vpn-detail-section">
-        <h3>최근 연결 이력</h3>
-
-        <ul className="vpn-detail-history">
-          {history.map((item) => (
-            <li key={item.at + item.message}>
-              <span className={`history-dot ${item.status}`} />
-              <span className="history-time">{item.at}</span>
-              <span>{item.message}</span>
-            </li>
-          ))}
-        </ul>
-      </div>
     </Modal>
   );
 }
 
-
-function buildHistory(device) {
-  const base = device.lastHandshake && device.lastHandshake !== "-"
-    ? device.lastHandshake
-    : "2026-08-10 09:00";
-
-  if (device.vpnStatus === "connected") {
-    return [
-      { at: base, status: "connected", message: "Handshake 정상" },
-      { at: "2026-08-09 22:14", status: "connected", message: "VPN 터널 연결" },
-      { at: "2026-08-09 22:13", status: "disconnected", message: "네트워크 변경 감지 · 재연결 시도" },
-    ];
-  }
-
-  if (device.vpnStatus === "error") {
-    return [
-      { at: base, status: "error", message: device.error ?? "연결 오류" },
-      { at: "2026-08-10 12:39", status: "disconnected", message: "재연결 시도 3회 실패" },
-      { at: "2026-08-10 08:02", status: "connected", message: "VPN 터널 연결" },
-    ];
-  }
-
-  return [
-    { at: "2026-08-10 11:20", status: "disconnected", message: "VPN 연결 해제" },
-    { at: "2026-08-09 18:45", status: "connected", message: "VPN 터널 연결" },
-  ];
-}
-
 export default VpnDeviceDetailModal;
+

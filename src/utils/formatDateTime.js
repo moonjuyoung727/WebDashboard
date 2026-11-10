@@ -45,6 +45,29 @@ export function formatDateTime(value, { empty = "-" } = {}) {
   return `${parts.year}-${parts.month}-${parts.day} ${parts.hour}:${parts.minute}:${parts.second}`;
 }
 
+// 지금과의 차이를 "방금 전 / 5분 전 / 3시간 전"으로, 하루가 넘으면 "MM-DD HH:mm"으로 보여 준다
+export function formatRelativeTime(value) {
+  const diffMinutes = Math.floor((Date.now() - parseUtc(value).getTime()) / 60000);
+
+  if (Number.isNaN(diffMinutes)) {
+    return "-";
+  }
+
+  if (diffMinutes < 1) {
+    return "방금 전";
+  }
+
+  if (diffMinutes < 60) {
+    return `${diffMinutes}분 전`;
+  }
+
+  if (diffMinutes < 24 * 60) {
+    return `${Math.floor(diffMinutes / 60)}시간 전`;
+  }
+
+  return formatDateTime(value).slice(5, 16);
+}
+
 // last_seen 전용: 한 번도 heartbeat를 받지 못한 보드(null)는 "기록 없음"
 export const LAST_SEEN_EMPTY = "기록 없음";
 

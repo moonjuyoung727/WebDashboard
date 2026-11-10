@@ -1,0 +1,39 @@
+.load-state-notice {
+  flex: 1;
+
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+
+  min-height: 180px;
+  padding: 24px;
+  box-sizing: border-box;
+
+  text-align: center;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.load-state-notice svg {
+  font-size: 28px;
+  color: var(--danger);
+}
+
+.load-state-notice strong {
+  font-size: 14px;
+  color: white;
+}
+
+.load-state-notice p {
+  margin: 0;
+}
+
+.load-state-notice.coming-soon {
+  min-height: 60vh;
+}
+
+.load-state-notice.coming-soon svg {
+  color: var(--accent);
+}

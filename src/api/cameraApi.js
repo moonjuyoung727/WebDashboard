@@ -1,5 +1,5 @@
 import { apiFetch, toApiError } from "./client";
-import { normalizeMac, deviceIdFromMac } from "../utils/mac";
+import { normalizeMac } from "../utils/mac";
 
 /* ===== 보드 관리 (ICD 2.2) — 보드는 MAC 주소로 구분한다 ===== */
 
@@ -7,25 +7,27 @@ import { normalizeMac, deviceIdFromMac } from "../utils/mac";
 // 여기서는 빠진 값만 채운다
 function toCamera(item) {
   return {
-    // device_id (I1 예외: "CAM-" + MAC 끝 4자리). 응답에 없으면 같은 규칙으로 만든다
-    device_id: item.device_id ?? deviceIdFromMac(item.mac),
+    // Retain a legacy ID if supplied; otherwise use the full canonical MAC.
+    device_id: item.device_id ?? normalizeMac(item.mac),
     mac: normalizeMac(item.mac),  // 대문자, 콜론 없는 12자리
     name: item.name ?? "",
     location: item.location ?? "",
     status: item.status ?? "offline",  // online / offline (last_seen 후 15초 초과 시 offline)
     last_seen: item.last_seen ?? null,
     firmware_version: item.firmware_version ?? null,
-    vpn_status: item.vpn_status ?? null,
+    vpn_status: item.vpn_status ?? null, 
     vpn_ip: item.vpn_ip ?? null,
     latest_event_time: item.latest_event_time ?? null,
-    thumbnail_url: item.thumbnail_url ?? null
+    thumbnail_url: item.thumbnail_url ?? null,
+    webrtcUrl: item.webrtcUrl ?? item.webrtc_url ?? item.whep_url ?? null
   };
 }
 
 // 2.2.2 보드 등록
 // cameraData: { mac, name, location }  name은 비워 두면 서버가 자동 부여
 // mac은 서버 형식(대문자, 콜론 없는 12자리)으로 바꿔서 보낸다
-export async function registerCamera({ mac, name, location }) {
+// notify: false면 실패해도 오류 토스트를 띄우지 않는다 (등록 모달이 직접 오류를 보여 줄 때)
+export async function registerCamera({ mac, name, location }, { notify = true } = {}) {
   const response = await apiFetch(`/devices/register`, {
     method: "POST",
     headers: {
@@ -39,7 +41,7 @@ export async function registerCamera({ mac, name, location }) {
   });
 
   if (!response.ok) {
-    throw await toApiError(response, "카메라 등록에 실패했습니다.");
+    throw await toApiError(response, "카메라 등록에 실패했습니다.", { notify });
   }
 
   // 등록 응답 형식이 명세에 없어서, 본문이 비어 있으면 null을 돌려준다
@@ -53,9 +55,9 @@ export async function registerCamera({ mac, name, location }) {
 const LIST_TIMEOUT_MS = 5000;
 
 // silent: true면 실패해도 오류 토스트를 띄우지 않는다 (자동 재조회용)
-export async function getCameras({ silent = false } = {}) {
+export async function getCameras({ silent = false, signal } = {}) {
   const response = await apiFetch(`/devices`, {
-    signal: AbortSignal.timeout(LIST_TIMEOUT_MS)
+    signal: signal ? AbortSignal.any([signal, AbortSignal.timeout(LIST_TIMEOUT_MS)]) : AbortSignal.timeout(LIST_TIMEOUT_MS)
   });
 
   if (!response.ok) {
@@ -70,12 +72,9 @@ export async function getCameras({ silent = false } = {}) {
   return list.map(toCamera);
 }
 
-/* ===== 추가 예정 API — 서버 연결 후 주석 해제 ===== */
-
-/* 2.2.3 보드 상태 조회
-   응답: { status, vpn_status, vpn_ip, last_handshake, uptime_seconds,
-           storage_total_gb, storage_used_gb, rtsp_url [TBD], rtsp_url_sub [TBD] }
-
+// 2.2.3 보드 상태 조회
+// 응답: { status, vpn_status, vpn_ip, last_handshake, uptime_seconds,
+//         storage_total_gb, storage_used_gb, rtsp_url [TBD], rtsp_url_sub [TBD] }
 export async function getCameraStatus(mac) {
   const response = await apiFetch(`/devices/${encodeURIComponent(mac)}/status`);
 
@@ -85,13 +84,10 @@ export async function getCameraStatus(mac) {
 
   return response.json();
 }
-*/
 
 
-/* 2.2.4 보드 정보 수정 (WEB-F-023 카메라 이름 수정 포함)
-   (Monitoring.jsx / DeviceManage.jsx 주석에서 호출하는 함수)
-   changes: { name (최대 50자), location, description (최대 200자) } 중 바꿀 항목만
-
+// 2.2.4 보드 정보 수정 (WEB-F-023 카메라 이름 수정 포함)
+// changes: { name (최대 50자), location, description (최대 200자) } 중 바꿀 항목만
 export async function updateCamera(mac, changes) {
   const response = await apiFetch(`/devices/${encodeURIComponent(mac)}`, {
     method: "PATCH",
@@ -109,8 +105,9 @@ export async function updateCamera(mac, changes) {
 export async function updateCameraName(mac, name) {
   return updateCamera(mac, { name });
 }
-*/
 
+
+/* ===== 추가 예정 API — 서버 연결 후 주석 해제 ===== */
 
 /* WEB-F-012 멀티뷰 저해상도 스트림 요청 [명세 없음]
    저화질 스트림 주소는 2.2.3 보드 상태 조회의 rtsp_url_sub [TBD]로 받을 예정
@@ -133,3 +130,6 @@ export async function getLowResStreams(cameraIds) {
   return response.json();
 }
 */
+
+export const cameraApi = { getCameras, registerCamera, getCameraStatus, updateCamera, updateCameraName };
+export default cameraApi;

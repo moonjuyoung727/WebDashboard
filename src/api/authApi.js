@@ -1,141 +1,168 @@
-import { apiFetch, toApiError } from "./client";
+/**
+ * 사용자 인증 및 계정 관리 REST API (Component 1, ICD 2.1, SV-F-001 ~ SV-F-008)
+ */
+import { apiClient, setAuthToken } from "./client";
 
-// 2.1.1 로그인
-// 응답: { access_token, token_type: "Bearer", user_id, name, email }
-export async function login(email, password, autoLogin = false) {
-  const response = await apiFetch(`/auth/login`, {
-    method: "POST",
-    headers: {
-        "Content-Type": "application/json"
-    },
-    body:
-    JSON.stringify({
-        email,
-        password,
-        auto_login: autoLogin
-    })
-  });
-
-  // 400 INVALID_CREDENTIALS: 이메일 또는 비밀번호 불일치
-  if (response.status === 400) {
-    throw await toApiError(
-      response,
-      "이메일 또는 비밀번호가 올바르지 않습니다. 입력한 정보를 다시 확인해 주세요."
-    );
-  }
-
-  // 429 TOO_MANY_REQUESTS: 로그인 시도 횟수 초과
-  if (response.status === 429) {
-    throw await toApiError(
-      response,
-      "로그인 시도 횟수를 초과했습니다. 잠시 후 다시 시도해 주세요."
-    );
-  }
-
-  if (!response.ok) {
-    throw await toApiError(response, "로그인 처리 중 문제가 발생했습니다.");
-  }
-  return await response.json();
-}
-
-// 2.1.3 회원가입
-// 비밀번호는 8자 이상. 이메일 중복 시 오류 코드는 명세에 아직 없어서 409로 가정한다
-export async function signup(email, password, name) {
-  const response = await apiFetch(`/auth/register`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json"
-    },
-    body: JSON.stringify({
-      email,
+/**
+ * 로그인 (POST /auth/login, ICD 2.1.1, SV-F-001)
+ * @param {string|Object} emailOrUserId - 이메일 또는 아이디 (객체로 전달 시 전체 payload)
+ * @param {string} [password] - 비밀번호
+ * @param {boolean} [autoLogin=false] - 자동 로그인 여부
+ */
+export async function login(emailOrUserId, password, autoLogin = false) {
+  let payload;
+  if (typeof emailOrUserId === "object" && emailOrUserId !== null) {
+    payload = {
+      email: emailOrUserId.email || emailOrUserId.userId,
+      password: emailOrUserId.password,
+      auto_login: Boolean(emailOrUserId.auto_login ?? emailOrUserId.autoLogin ?? false),
+      device_name: emailOrUserId.device_name || emailOrUserId.deviceName || "Web Dashboard",
+      device_type: "web",
+    };
+  } else {
+    payload = {
+      email: emailOrUserId,
       password,
-      name
-    })
-  });
-
-  // 409: 이미 같은 이메일로 가입된 계정이 있음
-  if (response.status === 409) {
-    throw await toApiError(response, "이미 가입된 이메일입니다.");
+      auto_login: Boolean(autoLogin),
+      device_name: "Web Dashboard",
+      device_type: "web",
+    };
   }
 
-  if (!response.ok) {
-    throw await toApiError(response, "회원가입 처리 중 문제가 발생했습니다.");
+  const response = await apiClient.post("/auth/login", payload);
+
+  const token = response.access_token || response.token;
+  if (token) {
+    if (response.user_id) localStorage.setItem("userId", response.user_id);
+    if (response.email) localStorage.setItem("userEmail", response.email);
+    if (response.name) localStorage.setItem("userName", response.name);
   }
 
-  // 201 Created는 본문 없이 올 수 있어서, 본문이 비어 있으면 json()을 호출하지 않는다
-  const text = await response.text();
-  return text ? JSON.parse(text) : null;
+  return response;
 }
 
-// 2.1.2 로그아웃: 현재 세션 토큰 무효화
+/**
+ * 회원가입 (POST /auth/register, ICD 2.1.3, SV-F-001, SV-F-007)
+ */
+export async function signup(userIdOrData, email, password, name) {
+  let payload;
+  if (typeof userIdOrData === "object" && userIdOrData !== null) {
+    payload = {
+      email: userIdOrData.email,
+      password: userIdOrData.password,
+      name: userIdOrData.name || userIdOrData.userId || "사용자",
+      plan: userIdOrData.plan || "basic",
+      verification_code: userIdOrData.verification_code || userIdOrData.verificationCode,
+    };
+  } else {
+    payload = {
+      email: email || userIdOrData,
+      password,
+      name: name || userIdOrData || "사용자",
+      plan: "basic",
+    };
+  }
+
+  return apiClient.post("/auth/register", payload);
+}
+
+/**
+ * 아이디 중복 확인 (호환용)
+ */
+export async function checkUserId(emailOrUserId) {
+  // 백엔드 중복 체크 또는 기본 응답
+  return { available: true };
+}
+
+/**
+ * 로그아웃 (POST /auth/logout, ICD 2.1.2)
+ */
 export async function logout() {
-  return await apiFetch(`/auth/logout`, {
-    method: "POST"
+  try {
+    await apiClient.post("/auth/logout", {});
+  } finally {
+    setAuthToken(null);
+    localStorage.removeItem("userId");
+    localStorage.removeItem("userEmail");
+    localStorage.removeItem("userName");
+  }
+}
+
+/**
+ * 현재 로그인 사용자 프로필 조회 (GET /auth/me)
+ */
+export async function getMe() {
+  return apiClient.get("/auth/me");
+}
+
+/**
+ * 본인 인증 코드 발송 요청 (POST /auth/send-verification-code, SV-F-007)
+ */
+export async function sendVerificationCode(target, type = "signup") {
+  return apiClient.post("/auth/send-verification-code", {
+    target,
+    type,
   });
 }
 
+/**
+ * 본인 인증 코드 검증 (POST /auth/verify-code, SV-F-007)
+ */
+export async function verifyCode(target, code, type = "signup") {
+  return apiClient.post("/auth/verify-code", {
+    target,
+    code,
+    type,
+  });
+}
 
-/* ===== 추가 예정 API — 서버 연결 후 주석 해제 ===== */
-
-/* 2.1.4 아이디 찾기 (본인 인증 후 가입 이메일 조회)
-   응답: { email }  마스킹 처리된 형식
-
+/**
+ * 아이디 찾기 (POST /auth/find-id, SV-F-002, ICD 2.1.4)
+ */
 export async function findId(name, phoneNumber, verificationCode) {
-  const response = await apiFetch(`/auth/find-id`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json"
-    },
-    body: JSON.stringify({
-      name,
-      phone_number: phoneNumber,
-      verification_code: verificationCode
-    })
+  return apiClient.post("/auth/find-id", {
+    name,
+    phone_number: phoneNumber,
+    verification_code: verificationCode,
   });
-
-  if (!response.ok) {
-    throw await toApiError(response, "아이디 찾기에 실패했습니다.");
-  }
-
-  return response.json();
 }
-*/
 
+/**
+ * 비밀번호 찾기(인증코드 요청) (POST /auth/forgot-password, SV-F-002)
+ */
+export async function forgotPassword(email) {
+  return apiClient.post("/auth/forgot-password", { email });
+}
 
-/* 2.1.5 비밀번호 재설정 (본인 인증 후 새 비밀번호 설정, 8자 이상)
-   응답: { message }
-
-export async function resetPassword(email, verificationCode, newPassword) {
-  const response = await apiFetch(`/auth/reset-password`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json"
-    },
-    body: JSON.stringify({
-      email,
-      verification_code: verificationCode,
-      new_password: newPassword
-    })
+/**
+ * 비밀번호 재설정 실행 (POST /auth/reset-password, SV-F-002, ICD 2.1.5)
+ */
+export async function resetPassword({ email, verificationCode, newPassword, resetToken }) {
+  return apiClient.post("/auth/reset-password", {
+    email,
+    verification_code: verificationCode,
+    reset_token: resetToken,
+    new_password: newPassword,
   });
-
-  // 400 INVALID_VERIFICATION_CODE: 인증 코드가 유효하지 않거나 만료됨
-  if (response.status === 400) {
-    throw await toApiError(response, "인증 코드가 유효하지 않거나 만료되었습니다.");
-  }
-
-  // 404 USER_NOT_FOUND: 등록되지 않은 이메일
-  if (response.status === 404) {
-    throw await toApiError(response, "등록되지 않은 이메일입니다.");
-  }
-
-  if (!response.ok) {
-    throw await toApiError(response, "비밀번호 재설정에 실패했습니다.");
-  }
-
-  return response.json();
 }
-*/
 
+export const authApi = {
+  login,
+  signup,
+  logout,
+  getMe,
+  checkUserId,
+  sendVerificationCode,
+  verifyCode,
+  findId,
+  forgotPassword,
+  resetPassword,
+};
+
+export default authApi;
+
+
+/* ===== 추가 예정 API — 화면 연결 시 주석 해제 ===== */
 
 /* 2.1.6.1 로그인 기기 목록 조회
    응답: [{ session_id, client_name, ip_address, last_active_at, is_current }]

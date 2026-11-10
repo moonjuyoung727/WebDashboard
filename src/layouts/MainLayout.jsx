@@ -3,14 +3,32 @@ import { Outlet, useLocation, useNavigate } from "react-router-dom";
 import Sidebar from "../components/Sidebar";
 import VpnAlertBanner from "../components/vpn/VpnAlertBanner";
 import ApiErrorToast from "../components/ApiErrorToast";
-import recentNotifications from "../data/recentNotifications.js";
-// import { logout } from "../api/authApi";  // 백엔드 연결 시 주석 해제
+import { getEvents } from "../api/eventApi";
+import { getEventTypeMeta } from "../components/charts/chartColors";
+import useServerResource from "../hooks/useServerResource";
+import { formatRelativeTime } from "../utils/formatDateTime";
+import { logout } from "../api/authApi";
 import { clearSession } from "../storage/authStorage";
 import "./MainLayout.css";
+
+const NOTIFICATION_POLL_MS = 30000;
+const NOTIFICATION_COUNT = 3;
+
+// 상단 알림은 미확인 이벤트 (모든 화면에서 돌기 때문에 실패해도 토스트를 띄우지 않는다)
+function loadUnconfirmedEvents() {
+  return getEvents({ status: "unconfirmed", page: 1, size: NOTIFICATION_COUNT, silent: true });
+}
 
 function MainLayout() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [openMenu, setOpenMenu] = useState(null);
+
+  const { data: unconfirmed, source: notificationSource } = useServerResource(
+    loadUnconfirmedEvents,
+    { pollMs: NOTIFICATION_POLL_MS }
+  );
+  const notifications = unconfirmed?.items ?? [];
+  const unconfirmedCount = unconfirmed?.total ?? 0;
 
   const headerActionsRef = useRef(null);
   const navigate = useNavigate();
@@ -40,7 +58,7 @@ function MainLayout() {
       return "Dashboard";
     }
 
-    if (path.startsWith("/Monitoring")) {
+    if (path.startsWith("/monitoring")) {
       return "실시간 모니터링";
     }
 
@@ -48,7 +66,7 @@ function MainLayout() {
       return "다채널 멀티뷰";
     }
 
-    if (path.startsWith("/subscriptions")) {
+    if (path.startsWith("/subscription")) {
       return "구독 관리";
     }
 
@@ -75,16 +93,14 @@ function MainLayout() {
     return "SECURE CAM";
   };
 
-  function handleLogout() {
-    clearSession();
-
-    sessionStorage.clear();
-
-    setOpenMenu(null);
-
-    navigate("/login", {
-      replace: true
-    });
+  async function handleLogout() {
+    try { await logout(); }
+    catch (error) { console.warn("로그아웃 요청 실패", error); }
+    finally {
+      clearSession();
+      setOpenMenu(null);
+      navigate("/login", { replace: true });
+    }
 
     // try {
     //   await logout();
@@ -157,9 +173,11 @@ function MainLayout() {
             strokeLinecap="round"
           />
             </svg>
-            <span className="notification-badge">
-              {recentNotifications.length}
-            </span>
+            {unconfirmedCount > 0 && (
+              <span className="notification-badge">
+                {unconfirmedCount}
+              </span>
+            )}
           </button>
 
         
@@ -183,7 +201,17 @@ function MainLayout() {
 
         <div className="notification-list">
 
-          {recentNotifications.map((notification) => (
+          {notifications.length === 0 && (
+            <p className="notification-empty">
+              {notificationSource === "error"
+                ? "알림을 불러오지 못했습니다."
+                : notificationSource === "loading"
+                  ? "불러오는 중..."
+                  : "새 알림이 없습니다."}
+            </p>
+          )}
+
+          {notifications.map((notification) => (
             <button
               type="button"
               className="notification-item"
@@ -196,9 +224,9 @@ function MainLayout() {
               <span className="notification-dot" />
 
               <div className="notification-content">
-                <strong> {notification.type} </strong>
-                <span> {notification.camera} </span>
-                <small> {notification.time} </small>
+                <strong> {getEventTypeMeta(notification.type).label} </strong>
+                <span> {notification.cameraName} </span>
+                <small> {formatRelativeTime(notification.occurredAt)} </small>
               </div>
             </button>
           ))}
@@ -349,7 +377,7 @@ function MainLayout() {
             </span>
 
             <span className="user-name">
-              admin
+              {localStorage.getItem("userName") || "사용자"}
             </span>
 
             <span

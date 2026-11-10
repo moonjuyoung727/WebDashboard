@@ -1,7 +1,7 @@
 // 모든 API 요청이 거쳐 가는 fetch 래퍼
 // - 베이스 URL을 붙이고, 로그인한 상태면 Authorization: Bearer {access_token} 헤더를 넣는다
 // - 401이면 토큰을 지우고 로그인 화면으로 보낸다
-// - 서버 오류 응답 { error_code, message, details }는 ApiError로 바꿔 message를 화면에 띄운다
+// - 서버 오류 응답은 ApiError로 바꿔 message를 화면에 띄운다
 // - 서버에 아예 닿지 못하면(네트워크 오류) NetworkError를 던지고 "VPN 연결을 확인하세요" 안내를 띄운다
 
 import { API_BASE_URL } from "./config";
@@ -18,25 +18,42 @@ export const API_ERROR_EVENT = "api-error";
 export const VPN_UNREACHABLE_EVENT = "vpn-unreachable";
 
 const SESSION_EXPIRED_MESSAGE = "로그인이 만료되었습니다. 다시 로그인해 주세요.";
-export const VPN_CHECK_MESSAGE = "VPN 연결을 확인하세요.";
+export const VPN_CHECK_MESSAGE = "서버에 접근할 수 없습니다. VPN 연결을 확인하세요.";
 
 export class ApiError extends Error {
-  constructor(status, { error_code, message, details } = {}, fallbackMessage) {
-    super(message || fallbackMessage);
+  // 서버 오류 본문은 { error_code, message, details } 또는 { error: { ... } } 모양으로 온다
+  constructor(status, data = {}, fallbackMessage = "요청에 실패했습니다.") {
+    const body = data?.error || data || {};
+
+    super(body.message || fallbackMessage);
     this.name = "ApiError";
     this.status = status;
-    this.code = error_code ?? null;
-    this.details = details ?? null;
+    this.statusCode = status;
+    this.code = body.error_code ?? body.code ?? null;
+    this.details = body.details ?? null;
   }
 }
 
-// 서버에 닿지 못함. API 서버(10.0.0.1)는 VPN 안에만 있어서 대부분 VPN이 끊긴 경우다
-// (서버가 꺼져 있거나 CORS로 막혀도 브라우저는 똑같이 네트워크 오류로 알려 준다)
+// 서버에 닿지 못함. VPN이 끊겼거나 서버가 꺼져 있는 경우가 대부분이다
+// (CORS로 막혀도 브라우저는 똑같이 네트워크 오류로 알려 준다)
 export class NetworkError extends ApiError {
   constructor(cause) {
     super(0, { error_code: "NETWORK_ERROR" }, VPN_CHECK_MESSAGE);
     this.name = "NetworkError";
     this.cause = cause;
+  }
+}
+
+export function getAuthToken() {
+  return getAccessToken() || "";
+}
+
+// null을 넘기면 로그아웃 처리만 한다
+export function setAuthToken(token) {
+  clearSession();
+
+  if (token) {
+    localStorage.setItem("accessToken", token);
   }
 }
 
@@ -49,12 +66,20 @@ async function readErrorBody(response) {
   }
 }
 
-export async function apiFetch(path, { headers, ...options } = {}) {
+// timeoutMs를 주면 그 시간이 지나 요청을 끊는다. path가 전체 주소면 베이스 URL을 붙이지 않는다
+export async function apiFetch(path, { headers, timeoutMs, ...options } = {}) {
   const token = getAccessToken();
+
+  if (timeoutMs) {
+    const timeout = AbortSignal.timeout(timeoutMs);
+    options.signal = options.signal ? AbortSignal.any([options.signal, timeout]) : timeout;
+  }
+
+  const url = /^https?:\/\//.test(path) ? path : `${API_BASE_URL}${path}`;
 
   let response;
   try {
-    response = await fetch(`${API_BASE_URL}${path}`, {
+    response = await fetch(url, {
       ...options,
       headers: {
         ...(token && { Authorization: `Bearer ${token}` }),
@@ -72,7 +97,7 @@ export async function apiFetch(path, { headers, ...options } = {}) {
   }
 
   // 로그인한 상태에서 401: 토큰이 만료되었거나 유효하지 않음
-  if (response.status === 401 && token) {
+  if (response.status === 401 && token && !path.includes("/auth/login")) {
     const error = new ApiError(401, await readErrorBody(response), SESSION_EXPIRED_MESSAGE);
 
     clearSession();
@@ -96,3 +121,39 @@ export async function toApiError(response, fallbackMessage, { notify = true } = 
 
   return error;
 }
+
+// JSON 요청 공통 처리. 객체 body는 JSON으로 바꾸고, 실패하면 ApiError를 던진다
+export async function request(path, { notify = true, ...options } = {}) {
+  const config = {
+    ...options,
+    headers: { "Content-Type": "application/json", ...options.headers }
+  };
+
+  if (config.body && typeof config.body === "object" && !(config.body instanceof FormData)) {
+    config.body = JSON.stringify(config.body);
+  }
+
+  const response = await apiFetch(path, config);
+
+  if (response.status === 204) {
+    return null;
+  }
+
+  if (!response.ok) {
+    throw await toApiError(response, `요청에 실패했습니다. (HTTP ${response.status})`, { notify });
+  }
+
+  return (response.headers.get("content-type") || "").includes("application/json")
+    ? response.json()
+    : response.text();
+}
+
+export const apiClient = {
+  get: (path, options = {}) => request(path, { ...options, method: "GET" }),
+  post: (path, body, options = {}) => request(path, { ...options, method: "POST", body }),
+  patch: (path, body, options = {}) => request(path, { ...options, method: "PATCH", body }),
+  put: (path, body, options = {}) => request(path, { ...options, method: "PUT", body }),
+  delete: (path, body, options = {}) => request(path, { ...options, method: "DELETE", body })
+};
+
+export default apiClient;

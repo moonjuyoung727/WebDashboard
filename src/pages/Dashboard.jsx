@@ -15,26 +15,14 @@ import "./Dashboard.css";
 import "../components/Modal.css";
 
 import DonutChart from "../components/charts/DonutChart";
-import { EVENT_TYPE_META, VPN_STATUS_META } from "../components/charts/chartColors";
+import LoadStateNotice from "../components/LoadStateNotice";
+import { EVENT_TYPES, VPN_STATUS_META, getEventTypeMeta } from "../components/charts/chartColors";
 import { useVpn } from "../context/VpnContext";
 import useCameraList from "../hooks/useCameraList";
+import useServerResource from "../hooks/useServerResource";
 
-import { eventLogs } from "../data/eventLogs";
-import {
-  generateDashboardSummary,
-  generateStatistics,
-  getDeviceVpnList,
-  toDateInputValue,
-} from "../data/statisticsMock";
-
-/* 서버 연결 후 주석 해제
-import {
-  getDashboardSummary,
-  getRecentEvents,
-  getEventTypeStats,
-  getDeviceVpnStatusList,
-} from "../api/dashboardApi";
-*/
+import { getAllEvents, getEvents } from "../api/eventApi";
+import { formatDateTime } from "../utils/formatDateTime";
 
 const PERIODS = [
   { key: "today", label: "오늘", days: 0 },
@@ -44,6 +32,29 @@ const PERIODS = [
 
 // 대시보드는 다른 목록 화면(5초)보다 느슨하게 10초마다 보드 목록을 다시 불러온다
 const DASHBOARD_POLL_MS = 10000;
+
+// 이벤트는 양이 많아서 더 느슨하게 다시 불러온다
+const EVENT_POLL_MS = 30000;
+
+// 날짜 비교는 화면에 보이는 한국 시간 기준 ("YYYY-MM-DD")
+const toKstDate = (value) => formatDateTime(value).slice(0, 10);
+
+function daysAgo(days) {
+  const date = new Date();
+  date.setDate(date.getDate() - days);
+
+  return date;
+}
+
+// 기간 선택의 최대(30일)만큼 받아 두고 화면에서 나눈다. 대시보드 전용 API는 명세에 없다
+async function loadDashboardEvents({ silent }) {
+  const [events, unconfirmed] = await Promise.all([
+    getAllEvents({ startDate: toKstDate(daysAgo(29)), endDate: toKstDate(new Date()), silent }),
+    getEvents({ status: "unconfirmed", page: 1, size: 1, silent }),
+  ]);
+
+  return { events, unconfirmedTotal: unconfirmed.total };
+}
 
 const CLIENT_VPN_TEXT = {
   connected: { label: "연결됨", desc: "VPN 내부 서버와 정상적으로 연결되어 있습니다." },
@@ -59,70 +70,68 @@ function Dashboard() {
   const [period, setPeriod] = useState("today");
   const [vpnFilter, setVpnFilter] = useState("all");
 
-  /* ---------- 목업 데이터 (서버 연결 후 API 응답으로 교체) ---------- */
+  // 보드 목록 (ICD 2.2.1) — 10초마다 재조회. 서버에 닿지 못하면 비우고 오류 안내
+  const { cameras, source, errorMessage, isListReady } = useCameraList({ pollMs: DASHBOARD_POLL_MS });
 
-  const unreadAlerts = eventLogs.filter((e) => e.status === "unconfirmed").length;
+  // 이벤트 (ICD 2.3.1) — 보드 목록과 따로 실패할 수 있어서 안내도 따로 보여 준다
+  const {
+    data: eventData,
+    source: eventSource,
+    errorMessage: eventErrorMessage,
+    isReady: isEventReady,
+  } = useServerResource(loadDashboardEvents, { pollMs: EVENT_POLL_MS });
 
-  // 보드 목록 (ICD 2.2.1) — 10초마다 재조회. 서버에 닿지 못하면 목업
-  const { cameras, source } = useCameraList({ pollMs: DASHBOARD_POLL_MS });
-  const isMockList = source === "loading" || source === "mock";
+  const events = useMemo(() => eventData?.events ?? [], [eventData]);
 
-  // 카메라 대수(전체 / 온라인 / 오프라인)는 보드 목록으로 계산하고,
-  // 오늘 이벤트 · 미확인 알림은 이벤트 API 연결 전까지 목업 값을 쓴다
   const summary = useMemo(() => {
-    const mockSummary = generateDashboardSummary(unreadAlerts);
+    const today = toKstDate(new Date());
     const onlineCameras = cameras.filter((camera) => camera.status === "online").length;
 
     return {
-      ...mockSummary,
       totalCameras: cameras.length,
       onlineCameras,
       offlineCameras: cameras.length - onlineCameras,
+      todayEvents: events.filter((event) => toKstDate(event.occurredAt) === today).length,
+      unreadAlerts: eventData?.unconfirmedTotal ?? 0,
     };
-  }, [cameras, unreadAlerts]);
+  }, [cameras, events, eventData]);
 
   // 카드 높이만큼 채워서 보여주고, 화면이 작으면 목록 안에서만 스크롤
   const recentEvents = useMemo(
     () =>
-      [...eventLogs]
-        .sort((a, b) => b.occurredAt.localeCompare(a.occurredAt))
+      [...events]
+        .sort((a, b) => String(b.occurredAt).localeCompare(String(a.occurredAt)))
         .slice(0, 12),
-    []
+    [events]
   );
 
   const typeStats = useMemo(() => {
-    const days = PERIODS.find((p) => p.key === period).days;
-    const end = new Date();
-    const start = new Date();
-    start.setDate(end.getDate() - days);
+    const from = toKstDate(daysAgo(PERIODS.find((p) => p.key === period).days));
+    const counts = new Map(EVENT_TYPES.map((type) => [type, 0]));
 
-    const { byType } = generateStatistics({
-      startDate: toDateInputValue(start),
-      endDate: toDateInputValue(end),
-    });
+    events
+      .filter((event) => toKstDate(event.occurredAt) >= from)
+      .forEach((event) => counts.set(event.type, (counts.get(event.type) ?? 0) + 1));
 
-    return byType.map((item) => ({
-      key: item.type,
-      label: EVENT_TYPE_META[item.type].label,
-      color: EVENT_TYPE_META[item.type].color,
-      value: item.count,
+    return [...counts].map(([type, value]) => ({
+      key: type,
+      ...getEventTypeMeta(type),
+      value,
     }));
-  }, [period]);
+  }, [events, period]);
 
-  // Device VPN 상태: 목업일 때는 시연용 목록(오류 기기 포함), 서버 데이터일 때는 보드 목록의 vpn_status
+  // Device VPN 상태: 보드 목록의 vpn_status
   // (오류 유형까지 보려면 2.5.1 GET /vpn/connections 연결 필요)
   const vpnList = useMemo(
     () =>
-      isMockList
-        ? getDeviceVpnList()
-        : cameras.map((camera) => ({
-            cameraId: camera.device_id,
-            cameraName: camera.name,
-            location: camera.location,
-            vpnStatus: camera.vpn_status ?? "disconnected",
-            error: null,
-          })),
-    [cameras, isMockList]
+      cameras.map((camera) => ({
+        cameraId: camera.device_id,
+        cameraName: camera.name,
+        location: camera.location,
+        vpnStatus: camera.vpn_status ?? "disconnected",
+        error: null,
+      })),
+    [cameras]
   );
 
   const vpnStats = Object.entries(VPN_STATUS_META).map(([key, meta]) => {
@@ -144,39 +153,14 @@ function Dashboard() {
     .filter((d) => vpnFilter === "all" || d.vpnStatus === vpnFilter)
     .sort((a, b) => statusOrder[a.vpnStatus] - statusOrder[b.vpnStatus]);
 
-  /*
-  서버 연결 후 예시
-  useEffect(() => {
-    async function loadDashboard() {
-      try {
-        const [summaryData, recent, vpn] = await Promise.all([
-          getDashboardSummary(),
-          getRecentEvents(12),
-          getDeviceVpnStatusList(),
-        ]);
-        setSummary(summaryData);
-        setRecentEvents(recent);
-        setVpnList(vpn);
-      } catch (error) {
-        console.error(error);
-      }
-    }
-    loadDashboard();
-  }, []);
-
-  useEffect(() => {
-    getEventTypeStats(period).then(setTypeStats).catch(console.error);
-  }, [period]);
-  */
-
   const clientVpn = CLIENT_VPN_TEXT[peerVpnStatus] ?? CLIENT_VPN_TEXT.disconnected;
 
   const summaryCards = [
-    { key: "total", label: "전체 카메라", value: summary.totalCameras, unit: "대", icon: <FiVideo />, to: "/devices" },
-    { key: "online", label: "온라인", value: summary.onlineCameras, unit: "대", icon: <FiWifi />, to: "/multiview", tone: "online" },
-    { key: "offline", label: "오프라인", value: summary.offlineCameras, unit: "대", icon: <FiWifiOff />, to: "/multiview", tone: "offline" },
-    { key: "today", label: "오늘 이벤트", value: summary.todayEvents, unit: "건", icon: <FiActivity />, to: "/event-logs" },
-    { key: "unread", label: "미확인 알림", value: summary.unreadAlerts, unit: "건", icon: <FiBell />, to: "/event-logs", tone: "warning" },
+    { key: "total", label: "전체 카메라", ready: isListReady, value: summary.totalCameras, unit: "대", icon: <FiVideo />, to: "/devices" },
+    { key: "online", label: "온라인", ready: isListReady, value: summary.onlineCameras, unit: "대", icon: <FiWifi />, to: "/multiview", tone: "online" },
+    { key: "offline", label: "오프라인", ready: isListReady, value: summary.offlineCameras, unit: "대", icon: <FiWifiOff />, to: "/multiview", tone: "offline" },
+    { key: "today", label: "오늘 이벤트", ready: isEventReady, value: summary.todayEvents, unit: "건", icon: <FiActivity />, to: "/event-logs" },
+    { key: "unread", label: "미확인 알림", ready: isEventReady, value: summary.unreadAlerts, unit: "건", icon: <FiBell />, to: "/event-logs", tone: "warning" },
   ];
 
   return (
@@ -194,8 +178,8 @@ function Dashboard() {
             <span className="dash-stat-icon">{card.icon}</span>
             <span className="dash-stat-label">{card.label}</span>
             <strong className="dash-stat-value">
-              {card.value}
-              <small>{card.unit}</small>
+              {card.ready ? card.value : "-"}
+              {card.ready && <small>{card.unit}</small>}
             </strong>
           </button>
         ))}
@@ -213,7 +197,11 @@ function Dashboard() {
             </button>
           </div>
 
-          <div className="dash-events-body">
+          {!isEventReady && (
+            <LoadStateNotice source={eventSource} subject="이벤트 현황을" message={eventErrorMessage} />
+          )}
+
+          {isEventReady && <div className="dash-events-body">
             <section className="dash-pane dash-type-pane">
               <div className="dash-pane-header">
                 <h4>유형별 발생</h4>
@@ -241,21 +229,25 @@ function Dashboard() {
               </div>
 
               <ul className="recent-event-list">
+                {recentEvents.length === 0 && (
+                  <li className="dash-empty">최근 이벤트가 없습니다.</li>
+                )}
+
                 {recentEvents.map((event) => (
                   <li key={event.id}>
                     <button type="button" onClick={() => navigate("/event-logs")}>
                       <span
                         className="recent-event-swatch"
-                        style={{ backgroundColor: EVENT_TYPE_META[event.type]?.color }}
+                        style={{ backgroundColor: getEventTypeMeta(event.type).color }}
                       />
                       <div className="recent-event-main">
-                        <strong>{EVENT_TYPE_META[event.type]?.label ?? event.type}</strong>
+                        <strong>{getEventTypeMeta(event.type).label}</strong>
                         <span>
-                          {event.cameraName} · {event.location}
+                          {event.cameraName}{event.location ? ` · ${event.location}` : ""}
                         </span>
                       </div>
                       <div className="recent-event-meta">
-                        <small>{event.occurredAt.replace("T", " ").slice(5, 16)}</small>
+                        <small>{formatDateTime(event.occurredAt).slice(5, 16)}</small>
                         <span className={`recent-event-status ${event.status}`}>
                           {event.status === "confirmed" ? "확인 완료" : "미확인"}
                         </span>
@@ -265,7 +257,7 @@ function Dashboard() {
                 ))}
               </ul>
             </section>
-          </div>
+          </div>}
         </article>
 
 
@@ -340,7 +332,11 @@ function Dashboard() {
               </div>
             </div>
 
-            <ul className="dash-vpn-stats">
+            {!isListReady && (
+              <LoadStateNotice source={source} subject="카메라 VPN 상태를" message={errorMessage} />
+            )}
+
+            {isListReady && <ul className="dash-vpn-stats">
               {vpnStats.map((item) => (
                 <li key={item.key}>
                   <span className="dash-vpn-stats-label">
@@ -354,9 +350,9 @@ function Dashboard() {
                   <span className="dash-vpn-stats-percent">{item.percent.toFixed(1)}%</span>
                 </li>
               ))}
-            </ul>
+            </ul>}
 
-            <ul className="dash-vpn-list">
+            {isListReady && <ul className="dash-vpn-list">
               {filteredVpnList.map((device) => (
                 <li key={device.cameraId}>
                   <span className="dash-vpn-name">
@@ -372,7 +368,7 @@ function Dashboard() {
               {filteredVpnList.length === 0 && (
                 <li className="dash-empty">해당 상태의 기기가 없습니다.</li>
               )}
-            </ul>
+            </ul>}
           </section>
         </article>
 

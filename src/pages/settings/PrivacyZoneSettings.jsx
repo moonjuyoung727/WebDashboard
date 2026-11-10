@@ -1,7 +1,8 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import PrivacyZoneEditor from "../../components/privacy/PrivacyZoneEditor";
-import { cameras } from "../../data/cameras";
+import LoadStateNotice from "../../components/LoadStateNotice";
+import useCameraList from "../../hooks/useCameraList";
 import { getZones, saveZones, countZones } from "../../data/privacyZoneStore";
 // import { getPrivacyZones, savePrivacyZones } from "../../api/privacyZoneApi";  // 서버 연결 후 주석 해제
 import "./Settings.css";
@@ -12,12 +13,28 @@ import "../../components/settings/SettingsExtra.css";
 function PrivacyZoneSettings() {
   const navigate = useNavigate();
 
-  const [cameraId, setCameraId] = useState(cameras[0]?.device_id);
-  const [zones, setZones] = useState(() => getZones(cameras[0]?.device_id));
-  const [savedJson, setSavedJson] = useState(() => JSON.stringify(getZones(cameras[0]?.device_id)));
+  const { cameras, source, errorMessage, isListReady } = useCameraList();
+
+  const [cameraId, setCameraId] = useState(null);
+  const [zones, setZones] = useState([]);
+  const [savedJson, setSavedJson] = useState("[]");
   const [keyword, setKeyword] = useState("");
   const [saveState, setSaveState] = useState("idle"); // idle | saving | done | failed
   const [, forceRender] = useState(0);
+
+  // 보드 목록이 처음 도착하면 첫 카메라를 선택한다
+  useEffect(() => {
+    if (cameraId !== null || cameras.length === 0) {
+      return;
+    }
+
+    const firstId = cameras[0].device_id;
+    const firstZones = getZones(firstId);
+
+    setCameraId(firstId);
+    setZones(firstZones);
+    setSavedJson(JSON.stringify(firstZones));
+  }, [cameraId, cameras]);
 
   const isDirty = JSON.stringify(zones) !== savedJson;
 
@@ -81,7 +98,11 @@ function PrivacyZoneSettings() {
     <div className="settings-section pz-settings-page">
       <h2>프라이버시 존 관리</h2>
 
-      <div className="pz-settings">
+      {!isListReady && (
+        <LoadStateNotice source={source} subject="카메라 목록을" message={errorMessage} />
+      )}
+
+      {isListReady && <div className="pz-settings">
         <aside className="pz-camera-list">
           <input
             className="field-input"
@@ -168,7 +189,7 @@ function PrivacyZoneSettings() {
             </>
           )}
         </section>
-      </div>
+      </div>}
     </div>
   );
 }

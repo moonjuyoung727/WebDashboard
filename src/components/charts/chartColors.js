@@ -18,7 +18,18 @@ export const EVENT_TYPE_META = {
   camera_disconnect: { label: "카메라 연결 끊김", color: CATEGORY_COLORS[3] },
   vpn_connect: { label: "VPN 연결", color: CATEGORY_COLORS[4] },
   vpn_disconnect: { label: "VPN 연결 끊김", color: CATEGORY_COLORS[5] },
+  // ICD 2.3.1 event_type
+  connection: { label: "연결 상태", color: CATEGORY_COLORS[2] },
+  system: { label: "시스템", color: CATEGORY_COLORS[5] },
 };
+
+// ICD 2.3.1 event_type 전체 (필터 · 유형별 통계의 기본 항목)
+export const EVENT_TYPES = ["motion", "sound", "connection", "system"];
+
+// 명세에 없는 유형이 와도 화면이 깨지지 않게 받은 값을 그대로 이름으로 쓴다
+export function getEventTypeMeta(type) {
+  return EVENT_TYPE_META[type] ?? { label: type, color: CATEGORY_COLORS[5] };
+}
 
 // 상태 색상은 index.css 토큰 사용 (항상 라벨과 함께 표시)
 export const VPN_STATUS_META = {

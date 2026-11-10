@@ -26,6 +26,6 @@
 }
 
 .camera-source.stale .camera-source-dot,
-.camera-source.mock .camera-source-dot {
+.camera-source.error .camera-source-dot {
   background-color: var(--danger);
 }

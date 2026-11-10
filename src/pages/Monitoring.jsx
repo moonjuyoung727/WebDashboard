@@ -31,19 +31,21 @@ import "./Monitoring.css";
 import { VPN_STATUS_META } from "../components/charts/chartColors";
 import useCameraList from "../hooks/useCameraList";
 import EditableCameraName from "../components/EditableCameraName";
+import LoadStateNotice from "../components/LoadStateNotice";
 import PrivacyZoneModal from "../components/privacy/PrivacyZoneModal";
 import { getZones } from "../data/privacyZoneStore";
 import useWebRtcStream from "../hooks/useWebRtcStream";
 import { formatLastSeen, formatUptime } from "../utils/formatDateTime";
 import { formatMac } from "../utils/mac";
 import useDigitalZoom, { MIN_ZOOM, MAX_ZOOM } from "../hooks/useDigitalZoom";
+import { updateCameraName } from "../api/cameraApi";
 
 function Monitoring() {
   const { cameraId } = useParams();
   const navigate = useNavigate();
 
   // 보드 목록 — 5초마다 자동 재조회해서 상태 / 마지막 수신 시간을 갱신한다
-  const { cameras, source } = useCameraList();
+  const { cameras, source, errorMessage, isListReady } = useCameraList();
 
   // URL의 :cameraId는 문자열이라 device_id(숫자 또는 문자열)와 문자열로 비교한다
   const liveCamera = cameras.find(
@@ -76,6 +78,7 @@ function Monitoring() {
   // 디지털 줌
   const stageRef = useRef(null);
   const zoom = useDigitalZoom(stageRef);
+  const resetZoom = zoom.reset;
 
   // 프라이버시 존 (WEB-F-024)
   const [isPrivacyOpen, setIsPrivacyOpen] = useState(false);
@@ -89,8 +92,8 @@ function Monitoring() {
     setNameOverride(null);
     setIsEditingName(false);
     setPrivacyZones(getZones(cameraId));
-    zoom.reset();
-  }, [cameraId]);
+    resetZoom();
+  }, [cameraId, resetZoom]);
 
 
   // 현재 날짜 / 시간
@@ -106,7 +109,11 @@ function Monitoring() {
   if (!camera) {
     return (
       <main className="monitoring-page">
-        <p>{source === "loading" ? "카메라 정보를 불러오는 중..." : "찾을 수 없는 카메라입니다."}</p>
+        {isListReady ? (
+          <p>찾을 수 없는 카메라입니다.</p>
+        ) : (
+          <LoadStateNotice source={source} subject="카메라 정보를" message={errorMessage} />
+        )}
 
         <button
           type="button"
@@ -120,7 +127,9 @@ function Monitoring() {
 
 
   // 이름 수정
-  function handleNameSave(newName) {
+  async function handleNameSave(newName) {
+    try { await updateCameraName(camera.mac, newName); }
+    catch (error) { return; }
     setNameOverride(newName);
 
     setIsEditingName(false);

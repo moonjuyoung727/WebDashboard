@@ -1,6 +1,7 @@
 // API 서버 베이스 URL. .env의 REACT_APP_API_BASE_URL에서 읽는다 (예: http://10.0.0.1:3000/v1)
+// 값이 없으면 사이트와 같은 주소의 /v1을 쓴다 (배포 환경: CloudFront가 /v1을 서버로 넘겨 준다)
 // 끝에 / 가 붙어 있어도 경로가 // 로 겹치지 않게 잘라 낸다
-export const API_BASE_URL = (process.env.REACT_APP_API_BASE_URL ?? "").replace(/\/+$/, "");
+export const API_BASE_URL = (process.env.REACT_APP_API_BASE_URL || "/v1").replace(/\/+$/, "");
 
 
 /* VPN 설정값 (ICD 5.1)

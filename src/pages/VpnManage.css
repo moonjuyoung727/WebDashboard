@@ -126,3 +126,9 @@
 .filter-reset-button:hover {
   background-color: var(--hover);
 }
+
+.vpn-feedback { padding: 10px 16px; color: #6fbf9a; }
+.vpn-feedback.error { color: #f0a2a2; }
+.vpn-row-actions { display: flex; flex-wrap: wrap; gap: 5px; justify-content: center; }
+.vpn-page button:disabled { opacity: 0.55; cursor: wait; }
+.vpn-device-detail-button { background: none; border: 0; color: inherit; cursor: pointer; text-align: left; }

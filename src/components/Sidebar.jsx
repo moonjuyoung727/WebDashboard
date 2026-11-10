@@ -1,8 +1,47 @@
 import { useState } from "react";
 import { NavLink, useNavigate } from "react-router-dom";
-import { cameras } from "../data/cameras";
+import useCameraList from "../hooks/useCameraList";
 import { clearSession } from "../storage/authStorage";
+import { logout } from "../api/authApi";
 import "./Sidebar.css";
+
+// 사이드바는 항상 떠 있으므로, 팝오버가 열려 있을 때만 보드 목록을 조회하도록 따로 둔다
+function CameraPopoverList({ onSelect }) {
+  const { cameras, source, errorMessage, isListReady } = useCameraList();
+
+  if (!isListReady) {
+    return (
+      <p className="camera-empty">
+        {source === "error"
+          ? `카메라 목록을 불러오지 못했습니다. ${errorMessage}`
+          : "불러오는 중..."}
+      </p>
+    );
+  }
+
+  if (cameras.length === 0) {
+    return <p className="camera-empty">등록된 카메라가 없습니다.</p>;
+  }
+
+  return cameras.map((camera) => (
+    <button
+      key={camera.device_id}
+      type="button"
+      className="camera-popover-item"
+      onClick={() => onSelect(camera.device_id)}
+    >
+      <span>{camera.name}</span>
+
+      <span
+        className={`camera-popover-status ${
+          camera.status === "online" ? "online" : "offline"
+        }`}
+      >
+        {camera.status}
+      </span>
+    </button>
+  ));
+}
 
 function Sidebar({ isOpen, onClose }) {
   const navigate = useNavigate();
@@ -52,7 +91,14 @@ function Sidebar({ isOpen, onClose }) {
     navigate(`/Monitoring/${cameraId}`);
   };
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    // 서버 세션을 먼저 끊는다. 요청이 실패해도 화면에서는 로그아웃한다
+    try {
+      await logout();
+    } catch (error) {
+      console.warn("로그아웃 요청 실패", error);
+    }
+
     clearSession();
 
     setIsMonitoringPopoverOpen(false);
@@ -119,34 +165,7 @@ function Sidebar({ isOpen, onClose }) {
                 </div>
 
                 <div className="camera-popover-list">
-                  {cameras.length === 0 ? (
-                    <p className="camera-empty">
-                      등록된 카메라가 없습니다.
-                    </p>
-                  ) : (
-                    cameras.map((camera) => (
-                      <button
-                        key={camera.device_id}
-                        type="button"
-                        className="camera-popover-item"
-                        onClick={() =>
-                          handleCameraSelect(camera.device_id)
-                        }
-                      >
-                        <span>{camera.name}</span>
-
-                        <span
-                          className={`camera-popover-status ${
-                            camera.status === "online"
-                              ? "online"
-                              : "offline"
-                          }`}
-                        >
-                          {camera.status}
-                        </span>
-                      </button>
-                    ))
-                  )}
+                  <CameraPopoverList onSelect={handleCameraSelect} />
                 </div>
               </div>
             )}

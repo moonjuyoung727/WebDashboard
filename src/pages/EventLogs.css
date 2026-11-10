@@ -352,7 +352,6 @@
   justify-content: center;
 
   color: var(--type-color, var(--accent));
-  box-shadow: var(--raised-sm);
   border-radius: 50%;
 
   font-size: 13px;
@@ -374,17 +373,11 @@
 
 .event-status.unconfirmed {
   color: var(--danger);
-
-  border: none;
-  box-shadow: var(--raised);
 }
 
 
 .event-status.confirmed {
   color: var(--success);
-
-  border: none;
-  box-shadow: var(--raised);
 }
 
 

@@ -3,26 +3,38 @@ import { FiCheck } from "react-icons/fi";
 import Modal from "../Modal";
 import "../Modal.css";
 import "./SettingsExtra.css";
-import { subscriptionPlans } from "../../data/subscriptionMock";
+import LoadStateNotice from "../LoadStateNotice";
+import useServerResource from "../../hooks/useServerResource";
+import { getSubscriptionPlans, changeSubscriptionPlan } from "../../api/settingsApi";
 
-// 요금제 변경 (WEB-F-061)
-function PlanChangeModal({ currentPlan, onClose, onConfirm }) {
-  const current = subscriptionPlans.find((plan) => plan.name === currentPlan);
-  const [selectedId, setSelectedId] = useState(current?.id ?? subscriptionPlans[0].id);
+// 요금제 변경 (WEB-F-061) — 요금제 목록은 서버에서 받는다
+function PlanChangeModal({ currentPlan, onClose, onChanged }) {
+  const { data: plans, source, errorMessage } = useServerResource(getSubscriptionPlans);
+
+  const [selectedId, setSelectedId] = useState(null);
   const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState("");
 
-  const selected = subscriptionPlans.find((plan) => plan.id === selectedId);
-  const isSame = selected.name === currentPlan;
-  const isUpgrade = current && selected.price > current.price;
+  const planList = plans ?? [];
+  const current = planList.find((plan) => plan.name === currentPlan);
+  const selected =
+    planList.find((plan) => plan.id === selectedId) ?? current ?? planList[0] ?? null;
 
-  function handleConfirm() {
+  const isSame = !selected || selected.name === currentPlan;
+  const isUpgrade = current && selected && selected.price > current.price;
+
+  async function handleConfirm() {
     setSaving(true);
+    setSaveError("");
 
-    // 시연용 지연 — 서버 연결 후 changeSubscriptionPlan(selectedId) 호출
-    setTimeout(() => {
-      onConfirm(selected);
+    try {
+      await changeSubscriptionPlan(selected.id);
+      onChanged(selected);
       onClose();
-    }, 700);
+    } catch (error) {
+      setSaveError(error.message);
+      setSaving(false);
+    }
   }
 
   return (
@@ -32,12 +44,15 @@ function PlanChangeModal({ currentPlan, onClose, onConfirm }) {
       onClose={onClose}
       footer={
         <>
-          <span className="plan-footer-note">
-            {isSame
-              ? "현재 이용 중인 요금제입니다."
-              : isUpgrade
-                ? "업그레이드는 즉시 적용되며 차액이 일할 계산되어 청구됩니다."
-                : "다운그레이드는 다음 결제일부터 적용됩니다."}
+          <span className={`plan-footer-note ${saveError ? "error" : ""}`.trim()}>
+            {saveError ||
+              (!selected
+                ? ""
+                : isSame
+                  ? "현재 이용 중인 요금제입니다."
+                  : isUpgrade
+                    ? "업그레이드는 즉시 적용되며 차액이 일할 계산되어 청구됩니다."
+                    : "다운그레이드는 다음 결제일부터 적용됩니다.")}
           </span>
           <button type="button" className="btn" onClick={onClose}>
             취소
@@ -48,38 +63,42 @@ function PlanChangeModal({ currentPlan, onClose, onConfirm }) {
             onClick={handleConfirm}
             disabled={isSame || saving}
           >
-            {saving ? "변경 중..." : `${selected.name}(으)로 변경`}
+            {saving ? "변경 중..." : selected ? `${selected.name}(으)로 변경` : "변경"}
           </button>
         </>
       }
     >
-      <div className="plan-grid">
-        {subscriptionPlans.map((plan) => (
-          <button
-            type="button"
-            key={plan.id}
-            className={`plan-card ${selectedId === plan.id ? "selected" : ""}`}
-            onClick={() => setSelectedId(plan.id)}
-          >
-            {plan.name === currentPlan && <span className="plan-current">현재 요금제</span>}
+      {!plans ? (
+        <LoadStateNotice source={source} subject="요금제 목록을" message={errorMessage} />
+      ) : (
+        <div className="plan-grid">
+          {planList.map((plan) => (
+            <button
+              type="button"
+              key={plan.id}
+              className={`plan-card ${selected?.id === plan.id ? "selected" : ""}`}
+              onClick={() => setSelectedId(plan.id)}
+            >
+              {plan.name === currentPlan && <span className="plan-current">현재 요금제</span>}
 
-            <strong className="plan-name">{plan.name}</strong>
-            <span className="plan-price">
-              ₩{plan.price.toLocaleString()}
-              <small>/월</small>
-            </span>
+              <strong className="plan-name">{plan.name}</strong>
+              <span className="plan-price">
+                ₩{Number(plan.price ?? 0).toLocaleString()}
+                <small>/월</small>
+              </span>
 
-            <ul>
-              {plan.features.map((feature) => (
-                <li key={feature}>
-                  <FiCheck />
-                  {feature}
-                </li>
-              ))}
-            </ul>
-          </button>
-        ))}
-      </div>
+              <ul>
+                {(plan.features ?? []).map((feature) => (
+                  <li key={feature}>
+                    <FiCheck />
+                    {feature}
+                  </li>
+                ))}
+              </ul>
+            </button>
+          ))}
+        </div>
+      )}
     </Modal>
   );
 }

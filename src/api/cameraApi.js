@@ -3,7 +3,7 @@ import { normalizeMac } from "../utils/mac";
 
 /* ===== 보드 관리 (ICD 2.2) — 보드는 MAC 주소로 구분한다 ===== */
 
-// 화면은 ICD 2.2.1 응답 필드명(snake_case)을 그대로 쓴다 (목업 data/cameras.js도 같은 모양)
+// 화면은 ICD 2.2.1 응답 필드명(snake_case)을 그대로 쓴다
 // 여기서는 빠진 값만 채운다
 function toCamera(item) {
   return {
@@ -19,15 +19,22 @@ function toCamera(item) {
     vpn_ip: item.vpn_ip ?? null,
     latest_event_time: item.latest_event_time ?? null,
     thumbnail_url: item.thumbnail_url ?? null,
-    webrtcUrl: item.webrtcUrl ?? item.webrtc_url ?? item.whep_url ?? null
+    webrtcUrl: item.webrtc_url ?? null,
+    lowResStreamUrl: item.webrtc_url_sub ?? null
   };
 }
 
+// 2.2.2 보드 등록 실패 시 화면에 보여 줄 문구 (서버 message보다 우선)
+const REGISTER_ERROR_MESSAGES = {
+  409: "이미 다른 계정에 등록된 보드입니다",       // CONFLICT
+  400: "MAC 주소 형식 또는 입력값을 확인하세요",   // BAD_REQUEST
+};
+
 // 2.2.2 보드 등록
-// cameraData: { mac, name, location }  name은 비워 두면 서버가 자동 부여
+// cameraData: { mac, name, location }  name은 비워 두면 보내지 않는다(서버가 자동 부여), location은 필수
 // mac은 서버 형식(대문자, 콜론 없는 12자리)으로 바꿔서 보낸다
-// notify: false면 실패해도 오류 토스트를 띄우지 않는다 (등록 모달이 직접 오류를 보여 줄 때)
-export async function registerCamera({ mac, name, location }, { notify = true } = {}) {
+// 실패 시 오류 토스트는 띄우지 않는다 (등록 모달이 오류 문구를 직접 보여 준다)
+export async function registerCamera({ mac, name, location }) {
   const response = await apiFetch(`/devices/register`, {
     method: "POST",
     headers: {
@@ -41,7 +48,14 @@ export async function registerCamera({ mac, name, location }, { notify = true } 
   });
 
   if (!response.ok) {
-    throw await toApiError(response, "카메라 등록에 실패했습니다.", { notify });
+    const error = await toApiError(response, "카메라 등록에 실패했습니다.", { notify: false });
+    const message = REGISTER_ERROR_MESSAGES[error.status];
+
+    if (message) {
+      error.message = message;
+    }
+
+    throw error;
   }
 
   // 등록 응답 형식이 명세에 없어서, 본문이 비어 있으면 null을 돌려준다
@@ -50,7 +64,7 @@ export async function registerCamera({ mac, name, location }, { notify = true } 
 }
 
 // 2.2.1 보드 목록 조회
-// VPN이 끊겨 있으면 10.0.0.1로 가는 요청이 응답 없이 오래 걸려서, 5초가 지나면 끊는다
+// VPN이 끊겨 있으면 10.0.0.100으로 가는 요청이 응답 없이 오래 걸려서, 5초가 지나면 끊는다
 // (시간 초과는 TimeoutError라 apiFetch에서 NetworkError → "VPN 연결을 확인하세요"로 처리된다)
 const LIST_TIMEOUT_MS = 5000;
 
@@ -106,30 +120,6 @@ export async function updateCameraName(mac, name) {
   return updateCamera(mac, { name });
 }
 
-
-/* ===== 추가 예정 API — 서버 연결 후 주석 해제 ===== */
-
-/* WEB-F-012 멀티뷰 저해상도 스트림 요청 [명세 없음]
-   저화질 스트림 주소는 2.2.3 보드 상태 조회의 rtsp_url_sub [TBD]로 받을 예정
-   요청: 선택 카메라 ID 목록
-   응답: [{ cameraId, streamUrl, sessionId }]
-
-export async function getLowResStreams(cameraIds) {
-  const response = await apiFetch(`/streams/low-res`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({ cameraIds }),
-  });
-
-  if (!response.ok) {
-    throw await toApiError(response, "저해상도 스트림 요청에 실패했습니다.");
-  }
-
-  return response.json();
-}
-*/
 
 export const cameraApi = { getCameras, registerCamera, getCameraStatus, updateCamera, updateCameraName };
 export default cameraApi;

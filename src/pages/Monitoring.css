@@ -379,7 +379,8 @@
   pointer-events: none;
 }
 
-.stream-status.failed {
+.stream-status.failed,
+.stream-status.paused {
   color: var(--danger);
 }
 

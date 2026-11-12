@@ -67,26 +67,15 @@ function DeviceManage() {
   function handleDeleteCamera() {
     setActionError("현재 서버는 카메라 삭제 API를 제공하지 않습니다.");
   }
+  // 실패하면 오류를 그대로 던져서 등록 모달이 오류 문구를 보여 주게 한다 (토스트는 띄우지 않음)
+  // 성공(201)하면 로컬 배열에 직접 넣지 않고 서버 목록을 다시 불러온다
   async function handleRegisterCamera(newCamera) {
     setActionError("");
-    try {
-      await registerCamera(newCamera);
-      await refresh();
-      setIsRegisterOpen(false);
-      setCurrentPage(1);
-    } catch (error) { setActionError(error.message); }
-  }
-  /*
-  async function handleRegiserCamera(cameraData) {
-    const response = await registerCamera(cameraData);
-    setCameras((prev) => [
-      ...prev,
-      response,
-    ]);
-  
+    await registerCamera(newCamera);
     setIsRegisterOpen(false);
+    setCurrentPage(1);
+    await refresh();
   }
-  */
 
   return (
     <main className="device-manage">

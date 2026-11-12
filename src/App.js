@@ -10,13 +10,13 @@ import MainLayout from "./layouts/MainLayout";
 import ProtectedRoute from "./routes/ProtectedRoute";
 
 import Login from "./pages/auth/Login";
-import FindId from "./pages/auth/FindId";
 import FindPw from "./pages/auth/FindPw";
 
 import Settings from "./pages/settings/Settings";
 import GeneralSettings from "./pages/settings/GeneralSettings";
 import NotificationSettings from "./pages/settings/NotificationSettings";
 import AccountSettings from "./pages/settings/AccountSettings";
+import SubscriptionSettings from "./pages/settings/SubscriptionSettings";
 import StorageSettings from "./pages/settings/StorageSettings";
 import PrivacyZoneSettings from "./pages/settings/PrivacyZoneSettings";
 
@@ -25,26 +25,12 @@ import Multiview from "./pages/Multiview";
 import DeviceManagement from "./pages/DeviceManage";
 import EventLogs from "./pages/EventLogs";
 import Monitoring from "./pages/Monitoring";
+import Reports from "./pages/Reports";
 import NotFound from "./pages/NotFound";
 import VpnManage from "./pages/VpnManage";
 import VpnCheck from "./pages/VpnCheck";
 import { VpnProvider } from "./context/VpnContext";
-import ComingSoon from "./components/ComingSoon";
-
-// 서버 API 명세가 없는 화면. 명세가 나오면 pages/Reports, pages/settings/SubscriptionSettings를 다시 연결한다
-const reportsComingSoon = (
-  <ComingSoon
-    title="통계 및 리포트는 준비 중입니다."
-    description="서버 통계 API가 제공되면 이용할 수 있습니다."
-  />
-);
-
-const subscriptionComingSoon = (
-  <ComingSoon
-    title="구독 관리는 준비 중입니다."
-    description="서버 구독 · 결제 API가 제공되면 이용할 수 있습니다."
-  />
-);
+import { GeneralSettingsProvider } from "./context/GeneralSettingsContext";
 
 function App() {
   return (
@@ -57,17 +43,25 @@ function App() {
         />
 
         {/* 로그인 전: 같은 카드가 주소에 맞춰 로그인 / 회원가입 / 찾기로 바뀐다 */}
-        <Route element={<AuthLayout />}> 
+        <Route element={<AuthLayout />}>
           <Route path="/login" element={<Login />} />
-          <Route path="/find-id" element={<FindId />} />
+          <Route path="/find-id" element={<Navigate to="/find-email" replace />} />
           <Route path="/reset-password" element={<FindPw />} />
+          <Route path="/find-email" element={<Login />} />
           <Route path="/find-pw" element={<Login />} />
           <Route path="/signup" element={<Login />} />
         </Route>
 
         {/* 로그인 후 */}
         <Route element={<ProtectedRoute />}>
-          <Route element={<MainLayout />}>
+          {/* 일반 설정(자동 새로고침)은 로그인 후 메인 화면이 뜰 때 한 번 불러와 모든 화면이 함께 쓴다 */}
+          <Route
+            element={
+              <GeneralSettingsProvider>
+                <MainLayout />
+              </GeneralSettingsProvider>
+            }
+          >
             <Route
               path="/dashboard"
               element={<Dashboard />}
@@ -80,7 +74,7 @@ function App() {
 
             <Route
               path="/subscription"
-              element={subscriptionComingSoon}
+              element={<SubscriptionSettings />}
             />
 
             <Route
@@ -100,16 +94,16 @@ function App() {
 
             <Route
               path="/reports"
-              element={reportsComingSoon}
+              element={<Reports />}
             />
 
-            <Route 
+            <Route
               path="/vpn-manage"
               element={<VpnManage />}
             />
-            <Route 
-              path="/vpn-check" 
-              element={<VpnCheck />} 
+            <Route
+              path="/vpn-check"
+              element={<VpnCheck />}
             />
 
             <Route path="/settings" element={<Settings />}>
@@ -117,7 +111,7 @@ function App() {
               <Route path="general" element={<GeneralSettings />} />
               <Route path="notifications" element={<NotificationSettings />} />
               <Route path="account" element={<AccountSettings />} />
-              <Route path="subscription" element={subscriptionComingSoon} />
+              <Route path="subscription" element={<SubscriptionSettings />} />
               <Route path="storage" element={<StorageSettings />} />
               <Route path="privacy-zones" element={<PrivacyZoneSettings />} />
             </Route>

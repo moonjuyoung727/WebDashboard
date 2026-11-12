@@ -3,95 +3,91 @@ import { useNavigate } from "react-router-dom";
 import PrivacyZoneEditor from "../../components/privacy/PrivacyZoneEditor";
 import LoadStateNotice from "../../components/LoadStateNotice";
 import useCameraList from "../../hooks/useCameraList";
-import { getZones, saveZones, countZones } from "../../data/privacyZoneStore";
-// import { getPrivacyZones, savePrivacyZones } from "../../api/privacyZoneApi";  // 서버 연결 후 주석 해제
+import useServerResource from "../../hooks/useServerResource";
+import { getPrivacyZones, savePrivacyZones } from "../../api/privacyZoneApi";
 import "./Settings.css";
 import "../../components/Modal.css";
 import "../../components/settings/SettingsExtra.css";
 
-// 프라이버시 존 관리 (WEB-F-064)
+// 프라이버시 존 관리 (WEB-F-064, ICD 2.6)
+// - 카메라 목록(2.2.1)과 선택한 보드의 프라이버시 존(2.6.1)을 서버에서 받는다
+// - 받지 못하면 안내를 보여 주고 15초마다 다시 시도한다
 function PrivacyZoneSettings() {
   const navigate = useNavigate();
 
-  const { cameras, source, errorMessage, isListReady } = useCameraList();
+  // 영역 설정 화면의 보드 목록은 자동 새로고침 설정과 상관없이 계속 다시 불러온다 (Android와 같음)
+  const { cameras, source, errorMessage, isListReady } = useCameraList({ followAutoRefresh: false });
 
-  const [cameraId, setCameraId] = useState(null);
-  const [zones, setZones] = useState([]);
+  const [selectedMac, setSelectedMac] = useState(null);
+  const [zones, setZones] = useState(null);       // 편집 중인 목록 (서버 목록을 받기 전에는 null)
   const [savedJson, setSavedJson] = useState("[]");
   const [keyword, setKeyword] = useState("");
   const [saveState, setSaveState] = useState("idle"); // idle | saving | done | failed
-  const [, forceRender] = useState(0);
+  const [saveError, setSaveError] = useState("");
 
   // 보드 목록이 처음 도착하면 첫 카메라를 선택한다
   useEffect(() => {
-    if (cameraId !== null || cameras.length === 0) {
-      return;
+    if (selectedMac === null && cameras.length > 0) {
+      setSelectedMac(cameras[0].mac);
     }
+  }, [selectedMac, cameras]);
 
-    const firstId = cameras[0].device_id;
-    const firstZones = getZones(firstId);
-
-    setCameraId(firstId);
-    setZones(firstZones);
-    setSavedJson(JSON.stringify(firstZones));
-  }, [cameraId, cameras]);
-
-  const isDirty = JSON.stringify(zones) !== savedJson;
-
-  const camera = cameras.find((c) => c.device_id === cameraId);
-
-  const filteredCameras = cameras.filter((c) =>
-    c.name.toLowerCase().includes(keyword.toLowerCase())
+  // 선택한 보드의 프라이버시 존 (보드를 바꾸면 비우고 다시 받는다)
+  // 응답에 보드 MAC을 붙여 두어, 보드를 바꾼 직후 이전 보드의 목록을 쓰지 않게 한다
+  const {
+    data: zoneResult,
+    source: zoneSource,
+    errorMessage: zoneErrorMessage,
+  } = useServerResource(
+    async (options) =>
+      selectedMac ? { mac: selectedMac, zones: await getPrivacyZones(selectedMac, options) } : null,
+    { key: selectedMac ?? "" }
   );
 
-  function handleSelectCamera(id) {
-    if (id === cameraId) return;
+  // 선택한 보드의 서버 목록을 받으면 편집용으로 복사한다
+  useEffect(() => {
+    if (zoneResult && zoneResult.mac === selectedMac && zones === null) {
+      setZones(zoneResult.zones);
+      setSavedJson(JSON.stringify(zoneResult.zones));
+    }
+  }, [zoneResult, selectedMac, zones]);
+
+  const isDirty = zones !== null && JSON.stringify(zones) !== savedJson;
+
+  const camera = cameras.find((c) => c.mac === selectedMac);
+
+  const filteredCameras = cameras.filter((c) =>
+    (c.name || c.mac).toLowerCase().includes(keyword.toLowerCase())
+  );
+
+  function handleSelectCamera(mac) {
+    if (mac === selectedMac) return;
 
     if (isDirty && !window.confirm("저장하지 않은 변경 사항이 있습니다. 이동하시겠습니까?")) {
       return;
     }
 
-    const next = getZones(id);
-
-    setCameraId(id);
-    setZones(next);
-    setSavedJson(JSON.stringify(next));
+    setSelectedMac(mac);
+    setZones(null);
+    setSavedJson("[]");
     setSaveState("idle");
+    setSaveError("");
   }
 
-  function handleSave() {
+  async function handleSave() {
     setSaveState("saving");
+    setSaveError("");
 
-    // 시연용: 서버 → 보드 적용 결과 대기
-    // 오프라인 카메라는 보드에 적용할 수 없으므로 실패 처리
-    setTimeout(() => {
-      if (camera.status !== "online") {
-        setSaveState("failed");
-        return;
-      }
+    try {
+      const saved = await savePrivacyZones(selectedMac, zones);
 
-      const saved = saveZones(cameraId, zones);
-
+      setZones(saved);
       setSavedJson(JSON.stringify(saved));
       setSaveState("done");
-      forceRender((n) => n + 1);
-    }, 900);
-
-    /* 서버 연결 후
-    try {
-      const result = await savePrivacyZones(cameraId, zones);
-      if (!result.applied) {
-        setSaveState("failed");
-        return;
-      }
-      setZones(result.zones);
-      setSavedJson(JSON.stringify(result.zones));
-      setSaveState("done");
     } catch (error) {
-      console.error(error);
+      setSaveError(error.message);
       setSaveState("failed");
     }
-    */
   }
 
   return (
@@ -102,7 +98,11 @@ function PrivacyZoneSettings() {
         <LoadStateNotice source={source} subject="카메라 목록을" message={errorMessage} />
       )}
 
-      {isListReady && <div className="pz-settings">
+      {isListReady && cameras.length === 0 && (
+        <p className="payment-empty">등록된 카메라가 없습니다.</p>
+      )}
+
+      {isListReady && cameras.length > 0 && <div className="pz-settings">
         <aside className="pz-camera-list">
           <input
             className="field-input"
@@ -113,15 +113,17 @@ function PrivacyZoneSettings() {
 
           <ul>
             {filteredCameras.map((c) => (
-              <li key={c.device_id}>
+              <li key={c.mac}>
                 <button
                   type="button"
-                  className={c.device_id === cameraId ? "active" : ""}
-                  onClick={() => handleSelectCamera(c.device_id)}
+                  className={c.mac === selectedMac ? "active" : ""}
+                  onClick={() => handleSelectCamera(c.mac)}
                 >
                   <span className={`pz-camera-dot ${c.status}`} />
-                  <span className="pz-camera-name">{c.name}</span>
-                  {countZones(c.device_id) > 0 && <span className="pz-camera-count">{countZones(c.device_id)}</span>}
+                  <span className="pz-camera-name">{c.name || c.mac}</span>
+                  {c.mac === selectedMac && zones !== null && zones.length > 0 && (
+                    <span className="pz-camera-count">{zones.length}</span>
+                  )}
                 </button>
               </li>
             ))}
@@ -133,9 +135,9 @@ function PrivacyZoneSettings() {
             <>
               <div className="pz-settings-head">
                 <div>
-                  <strong>{camera.name}</strong>
+                  <strong>{camera.name || camera.mac}</strong>
                   <span>
-                    {camera.location} · {camera.status === "online" ? "온라인" : "오프라인"}
+                    {camera.location || "위치 미설정"} · {camera.status === "online" ? "온라인" : "오프라인"}
                   </span>
                 </div>
 
@@ -148,44 +150,52 @@ function PrivacyZoneSettings() {
                 </button>
               </div>
 
-              <PrivacyZoneEditor
-                key={camera.device_id}
-                zones={zones}
-                onChange={(next) => {
-                  setZones(next);
-                  setSaveState("idle");
-                }}
-                cameraName={camera.name}
-              />
+              {zones === null ? (
+                <LoadStateNotice source={zoneSource} subject="프라이버시 존을" message={zoneErrorMessage} />
+              ) : (
+                <>
+                  <PrivacyZoneEditor
+                    key={camera.mac}
+                    zones={zones}
+                    onChange={(next) => {
+                      setZones(next);
+                      setSaveState("idle");
+                      setSaveError("");
+                    }}
+                    cameraName={camera.name}
+                  />
 
-              <div className="pz-settings-footer">
-                <span className={`pz-save-message ${saveState}`}>
-                  {saveState === "done" && "보드에 프라이버시 존이 적용되었습니다."}
-                  {saveState === "failed" && "보드 적용에 실패했습니다. 카메라 연결 상태를 확인하세요."}
-                  {saveState === "idle" && isDirty && "저장하지 않은 변경 사항이 있습니다."}
-                </span>
+                  <div className="pz-settings-footer">
+                    <span className={`pz-save-message ${saveState}`}>
+                      {saveState === "done" && "프라이버시 존을 저장했습니다."}
+                      {saveState === "failed" && saveError}
+                      {saveState === "idle" && isDirty && "저장하지 않은 변경 사항이 있습니다."}
+                    </span>
 
-                <button
-                  type="button"
-                  className="btn"
-                  disabled={!isDirty || saveState === "saving"}
-                  onClick={() => {
-                    setZones(JSON.parse(savedJson));
-                    setSaveState("idle");
-                  }}
-                >
-                  되돌리기
-                </button>
+                    <button
+                      type="button"
+                      className="btn"
+                      disabled={!isDirty || saveState === "saving"}
+                      onClick={() => {
+                        setZones(JSON.parse(savedJson));
+                        setSaveState("idle");
+                        setSaveError("");
+                      }}
+                    >
+                      되돌리기
+                    </button>
 
-                <button
-                  type="button"
-                  className="btn primary"
-                  disabled={!isDirty || saveState === "saving"}
-                  onClick={handleSave}
-                >
-                  {saveState === "saving" ? "보드에 적용 중..." : "저장"}
-                </button>
-              </div>
+                    <button
+                      type="button"
+                      className="btn primary"
+                      disabled={!isDirty || saveState === "saving"}
+                      onClick={handleSave}
+                    >
+                      {saveState === "saving" ? "저장 중..." : "저장"}
+                    </button>
+                  </div>
+                </>
+              )}
             </>
           )}
         </section>

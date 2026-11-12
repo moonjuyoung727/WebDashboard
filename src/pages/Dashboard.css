@@ -492,22 +492,6 @@
   white-space: nowrap;
 }
 
-.client-vpn-demo {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-
-  padding: 0;
-
-  background: none;
-  border: none;
-  color: var(--text-muted);
-
-  font-size: 11px;
-  cursor: pointer;
-}
-
-
 /* =========================
    VPN 연결 상태 - Device VPN (카메라)
 ========================= */

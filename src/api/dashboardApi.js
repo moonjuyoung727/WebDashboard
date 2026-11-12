@@ -4,7 +4,7 @@
   대시보드 (홈) API — 서버 연결 후 주석 해제
   [명세 없음] ICD에 대시보드 전용 API가 없다. 보드 목록은 cameraApi getCameras(2.2.1),
   최근 이벤트는 eventApi getEvents(2.3.1), Device VPN 상태는 vpnApi getVpnDevices(2.5.1)로 대신할 수 있다
-  현재 Dashboard.jsx는 data/statisticsMock.js 목업 데이터 사용
+  현재 Dashboard.jsx는 위 명세 API(2.2.1, 2.3.1) 응답을 화면에서 집계해서 쓴다
 */
 
 /* WEB-F-001 대시보드 요약 정보
@@ -67,7 +67,6 @@ export async function getDeviceVpnStatusList() {
 
   return response.json();
 }
-*/
 
 
 /* WEB-F-004 / WEB-F-050 / WEB-F-074 Client VPN 내부 서버 연결 확인

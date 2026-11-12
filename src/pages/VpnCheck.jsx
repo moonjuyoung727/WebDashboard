@@ -1,9 +1,12 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { FaCheckCircle, FaTimesCircle } from "react-icons/fa";
-import { loadVpnData } from "../api/vpnApi";
+import { FiHelpCircle, FiRefreshCw, FiShield } from "react-icons/fi";
+import { fetchClientVpnStatus } from "../api/vpnApi";
 import { getAuthToken, setAuthToken } from "../api/client";
 import { useVpn } from "../context/VpnContext";
+import VpnGuideModal from "../components/vpn/VpnGuideModal";
+import "../components/Modal.css";
 import "./VpnCheck.css";
 
 function VpnCheck() {
@@ -11,6 +14,7 @@ function VpnCheck() {
   const { setPeerVpnStatus } = useVpn();
   const [status, setStatus] = useState("checking");
   const [message, setMessage] = useState("");
+  const [isGuideOpen, setIsGuideOpen] = useState(false);
   const requestController = useRef(null);
   const redirectTimer = useRef(null);
   const check = useCallback(async () => {
@@ -23,9 +27,21 @@ function VpnCheck() {
       return;
     }
     setStatus("checking");
+    const fail = (text) => {
+      setStatus("fail");
+      setPeerVpnStatus("error");
+      setMessage(text);
+    };
     try {
-      await loadVpnData({ signal: controller.signal });
+      // GET /v1/status: 요청이 클라이언트 VPN 대역(10.0.2.x)을 거쳐 왔는지 서버가 판단한다
+      const connected = await fetchClientVpnStatus({ signal: controller.signal });
       if (controller.signal.aborted) return;
+      if (!connected) {
+        fail(
+          "VPN 대역을 거치지 않은 요청입니다. WireGuard 앱에서 클라이언트 VPN을 연결한 후 다시 확인해주세요.",
+        );
+        return;
+      }
       setStatus("success");
       setPeerVpnStatus("connected");
       setMessage("VPN 서버에 접근할 수 있습니다. 대시보드로 이동합니다.");
@@ -40,9 +56,7 @@ function VpnCheck() {
         navigate("/login", { replace: true });
         return;
       }
-      setStatus("fail");
-      setPeerVpnStatus("error");
-      setMessage(
+      fail(
         "VPN 서버에 접근하지 못했습니다. WireGuard 앱에서 VPN을 연결한 후 다시 확인해주세요.",
       );
     }
@@ -75,15 +89,31 @@ function VpnCheck() {
         </p>
         {status === "fail" && (
           <div className="vpn-check-actions">
-            <button type="button" onClick={check}>
-              다시 확인
+            <button type="button" className="btn" onClick={() => setIsGuideOpen(true)}>
+              <FiHelpCircle />
+              재연결 안내
             </button>
-            <button type="button" onClick={() => navigate("/vpn-manage")}>
+            <button type="button" className="btn" onClick={() => navigate("/vpn-manage")}>
+              <FiShield />
               VPN 관리로 이동
+            </button>
+            <button type="button" className="btn primary" onClick={check}>
+              <FiRefreshCw />
+              다시 확인
             </button>
           </div>
         )}
       </div>
+
+      {isGuideOpen && (
+        <VpnGuideModal
+          onClose={() => setIsGuideOpen(false)}
+          onRetry={() => {
+            setIsGuideOpen(false);
+            check();
+          }}
+        />
+      )}
     </main>
   );
 }

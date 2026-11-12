@@ -132,6 +132,10 @@
   padding-top: 8px;
 }
 
+.auth-collapse-body.is-flush {
+  padding-top: 0;
+}
+
 .auth-collapse-body.is-hint {
   padding-top: 6px;
 }
@@ -405,6 +409,54 @@
   align-items: center;
 
   gap: 6px;
+}
+
+
+.auth-find-sep {
+  color: var(--text-muted);
+
+  font-size: 12px;
+
+  opacity: 0.6;
+}
+
+
+/* 입력 칸 안쪽 글자 버튼 (인증번호 받기) */
+.auth-inline-button {
+  flex-shrink: 0;
+
+  height: 34px;
+
+  display: flex;
+  align-items: center;
+
+  gap: 6px;
+
+  padding: 0 12px;
+
+  color: var(--accent);
+  background: transparent;
+
+  border: none;
+  border-radius: var(--radius-sm);
+  box-shadow: var(--raised);
+
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+
+  cursor: pointer;
+}
+
+
+.auth-inline-button:active:not(:disabled) {
+  box-shadow: var(--inset);
+}
+
+
+.auth-inline-button:disabled {
+  opacity: 0.6;
+  cursor: default;
 }
 
 

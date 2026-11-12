@@ -111,7 +111,8 @@ function CameraCard({
         }}
         aria-label={`${camera.name} 실시간 모니터링 열기`}
       >
-        {/* WEB-F-012 멀티뷰는 저해상도 스트림 재생 — streamUrl 은 getLowResStreams() 응답의 WHEP 주소 */}
+        {/* WEB-F-012 멀티뷰는 저화질 스트림 재생 — streamUrl 은 camera.lowResStreamUrl (2.2.1 webrtc_url_sub)
+            저화질 주소가 없으면 고화질로 대신 재생하지 않고 "저화질 스트림 없음"을 표시한다 */}
         {isOnline && streamStatus !== "idle" ? (
           <>
             <video
@@ -125,17 +126,30 @@ function CameraCard({
 
             {streamStatus !== "connected" && (
               <div className={`cam-stream-status ${streamStatus}`}>
-                {streamStatus === "connecting" ? "연결 중..." : "연결 실패"}
+                {streamStatus === "connecting"
+                  ? "연결 중..."
+                  : streamStatus === "reconnecting"
+                    ? "재연결 중..."
+                    : streamStatus === "paused"
+                      ? "VPN 끊김 · 연결 대기"
+                      : "연결 실패 · 재시도 중"}
               </div>
             )}
           </>
         ) : isOnline ? (
-          // 스트림이 없으면 썸네일 (thumbnail_url이 비어 있으면 기본 이미지)
-          <CameraThumbnail
-            url={camera.thumbnail_url}
-            alt={`${camera.name} 썸네일`}
-            className="cam-thumbnail"
-          />
+          // online인데 저화질 주소가 없으면 썸네일 위에 안내 (thumbnail_url이 비어 있으면 기본 이미지)
+          <>
+            <CameraThumbnail
+              url={camera.thumbnail_url}
+              alt={`${camera.name} 썸네일`}
+              className="cam-thumbnail"
+            />
+
+            <div className="cam-no-signal">
+              <FiVideoOff />
+              <strong>저화질 스트림 없음</strong>
+            </div>
+          </>
         ) : (
           <>
             <CameraThumbnail url={camera.thumbnail_url} className="cam-thumbnail offline" />

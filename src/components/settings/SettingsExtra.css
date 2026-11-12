@@ -91,6 +91,10 @@
   color: var(--text-muted);
 }
 
+.plan-footer-note.error {
+  color: var(--danger);
+}
+
 
 /* =========================
    결제 수단 (WEB-F-061)

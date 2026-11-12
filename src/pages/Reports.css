@@ -109,6 +109,19 @@
   color: var(--danger);
 }
 
+/* 서버 조회 실패 안내 (카메라 목록) */
+.report-alert {
+  margin: 0;
+  font-size: 12px;
+  color: var(--danger);
+}
+
+/* 이벤트를 아직 받지 못했을 때 차트 영역 자리 */
+.report-main-notice {
+  flex: 1;
+  min-height: 0;
+}
+
 
 /* =========================
    요약 타일 (누르면 상세 보기)
@@ -140,8 +153,13 @@
   cursor: pointer;
 }
 
-.report-kpi:hover {
+.report-kpi:hover:not(:disabled) {
   background-color: var(--hover);
+}
+
+/* 값을 아직 받지 못한 타일은 상세 보기를 열지 않는다 */
+.report-kpi:disabled {
+  cursor: default;
 }
 
 .report-kpi-icon {

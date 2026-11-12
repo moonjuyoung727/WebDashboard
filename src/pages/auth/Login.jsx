@@ -1,5 +1,5 @@
 //로그인 화면
-//한 카드 안에서 로그인 / 회원가입 / 비밀번호 찾기를 전환한다
+//한 카드 안에서 로그인 / 회원가입 / 이메일 찾기 / 비밀번호 찾기를 전환한다
 //이메일로 가입하고 로그인한다
 
 import "./Login.css";
@@ -10,10 +10,18 @@ import {
   FaLock,
   FaEnvelope,
   FaUser,
-  FaCheck
+  FaCheck,
+  FaMobileAlt,
+  FaKey
 } from "react-icons/fa";
 import { useLocation, useNavigate } from "react-router-dom";
-import { login, signup, forgotPassword } from "../../api/authApi";
+import {
+  login,
+  signup,
+  forgotPassword,
+  sendVerificationCode,
+  findEmail
+} from "../../api/authApi";
 import { ApiError } from "../../api/client";
 import {
   saveSession,
@@ -28,22 +36,34 @@ import {
 const MODE_PATHS = {
   login: "/login",
   signup: "/signup",
+  findEmail: "/find-email",
   findPw: "/find-pw"
 };
 
 const TITLES = {
   login: "로그인",
   signup: "회원가입",
+  findEmail: "이메일 찾기",
   findPw: "비밀번호 찾기"
 };
 
 const SUBMIT_LABELS = {
   login: "LOGIN",
   signup: "SIGN UP",
+  findEmail: "FIND EMAIL",
   findPw: "FIND PASSWORD"
 };
 
-const FIND_PW_GUIDE = "가입한 이메일을 입력해 주세요.";
+const GUIDES = {
+  findEmail: "이름과 휴대폰 번호로 본인 인증을 해 주세요.",
+  findPw: "가입한 이메일을 입력해 주세요."
+};
+
+// 휴대폰 번호 (하이픈 제외 숫자 10~11자리)
+const PHONE_PATTERN = /^01\d{8,9}$/;
+const PHONE_MAX_LENGTH = 13;
+
+const CODE_MAX_LENGTH = 10;
 
 // 이메일 주소 최대 길이 (RFC 5321)
 const EMAIL_MAX_LENGTH = 254;
@@ -76,12 +96,20 @@ function Login() {
   const mode = modeOf(location.pathname);
 
   const isSignup = mode === "signup";
-  const isFind = mode === "findPw";
+  const isFindEmail = mode === "findEmail";
+  const isFindPw = mode === "findPw";
+  const isFind = isFindEmail || isFindPw;
 
   const [name, setName] = useState("");
   const [email, setEmail] = useState(getRememberedUserId);
   const [password, setPassword] = useState("");
   const [passwordConfirm, setPasswordConfirm] = useState("");
+
+  // 이메일 찾기 본인 인증
+  const [phone, setPhone] = useState("");
+  const [code, setCode] = useState("");
+  const [isCodeSent, setIsCodeSent] = useState(false);
+  const [isSendingCode, setIsSendingCode] = useState(false);
 
   // 로그인 상태 유지 (remember me)
   const [rememberMe, setRememberMe] = useState(isRememberMe);
@@ -95,8 +123,16 @@ function Login() {
     name: useRef(null),
     email: useRef(null),
     password: useRef(null),
-    passwordConfirm: useRef(null)
+    passwordConfirm: useRef(null),
+    phone: useRef(null),
+    code: useRef(null)
   };
+
+  // 안내 문구도 접히는 동안 남아 있도록 마지막 문구를 기억해 둔다
+  const lastGuideRef = useRef(GUIDES.findPw);
+  if (GUIDES[mode]) {
+    lastGuideRef.current = GUIDES[mode];
+  }
 
   const shownFeedback = feedback?.mode === mode ? feedback : null;
 
@@ -127,6 +163,15 @@ function Login() {
   useEffect(() => {
     if (mode !== "signup") {
       setPasswordConfirm("");
+    }
+  }, [mode]);
+
+  // 이메일 찾기 카드를 벗어나면 인증 입력을 초기화한다
+  useEffect(() => {
+    if (mode !== "findEmail") {
+      setPhone("");
+      setCode("");
+      setIsCodeSent(false);
     }
   }, [mode]);
 
@@ -199,6 +244,46 @@ function Login() {
 
     setPasswordConfirm(value);
     setFeedback(null);
+  }
+
+  // 숫자와 하이픈만 받는다
+  function handlePhoneChange(event) {
+    const value = event.target.value;
+
+    if (value.length > PHONE_MAX_LENGTH || !/^[\d-]*$/.test(value)) {
+      return;
+    }
+
+    setPhone(value);
+    setFeedback(null);
+  }
+
+  function handleCodeChange(event) {
+    const value = event.target.value.trim();
+
+    if (value.length > CODE_MAX_LENGTH) {
+      return;
+    }
+
+    setCode(value);
+    setFeedback(null);
+  }
+
+  // 휴대폰 번호 미입력 / 형식 검사. 통과하면 숫자만 남긴 번호를 돌려준다
+  function validatePhone() {
+    const digits = phone.replace(/-/g, "");
+
+    if (!digits) {
+      showError("휴대폰 번호를 입력해 주세요.", "phone");
+      return null;
+    }
+
+    if (!PHONE_PATTERN.test(digits)) {
+      showError("올바른 휴대폰 번호를 입력해 주세요.", "phone");
+      return null;
+    }
+
+    return digits;
   }
 
   // 이메일 미입력 / 형식 검사 (모든 모드 공통)
@@ -365,6 +450,94 @@ function Login() {
   }
 
 
+  /* 이메일 찾기 */
+
+  async function handleSendCode() {
+    if (isSendingCode || isBusy) {
+      return;
+    }
+
+    const digits = validatePhone();
+    if (!digits) {
+      return;
+    }
+
+    try {
+      setIsSendingCode(true);
+      setFeedback(null);
+
+      await sendVerificationCode(digits, "find_id");
+
+      setIsCodeSent(true);
+      showNotice("인증번호를 보냈습니다. 문자 메시지를 확인해 주세요.");
+      inputRefs.code.current?.focus();
+    } catch (error) {
+      console.error(error);
+      showError(
+        error instanceof ApiError
+          ? error.message
+          : "인증번호 발송 중 문제가 발생했습니다.",
+        "phone"
+      );
+    } finally {
+      setIsSendingCode(false);
+    }
+  }
+
+  async function handleFindEmail() {
+    if (!name.trim()) {
+      showError("이름을 입력해 주세요.", "name");
+      return;
+    }
+
+    const digits = validatePhone();
+    if (!digits) {
+      return;
+    }
+
+    if (!isCodeSent) {
+      showError("인증번호 받기를 먼저 눌러 주세요.", "phone");
+      return;
+    }
+
+    if (!code) {
+      showError("인증번호를 입력해 주세요.", "code");
+      return;
+    }
+
+    try {
+      setIsBusy(true);
+      setFeedback(null);
+
+      const data = await findEmail(name.trim(), digits, code);
+
+      if (!data?.email) {
+        throw new Error("MISSING_EMAIL");
+      }
+
+      showNotice(`가입된 이메일은 ${data.email} 입니다.`);
+    } catch (error) {
+
+      // 400: 인증번호 불일치 / 만료
+      if (error instanceof ApiError && error.status === 400) {
+        showError(error.message, "code");
+        return;
+      }
+
+      console.error(error);
+      setFeedback({
+        mode,
+        text: error instanceof ApiError
+          ? error.message
+          : "이메일 찾기 처리 중 문제가 발생했습니다.",
+        isError: true
+      });
+    } finally {
+      setIsBusy(false);
+    }
+  }
+
+
   /* 비밀번호 찾기 */
 
   async function handleFindPassword() {
@@ -391,6 +564,7 @@ function Login() {
 
     if (mode === "login") handleLogin();
     else if (mode === "signup") handleSignup();
+    else if (mode === "findEmail") handleFindEmail();
     else handleFindPassword();
   }
 
@@ -415,11 +589,13 @@ function Login() {
 
           {/* 찾기 안내 */}
           <Collapse open={isFind} tight>
-            <p className="auth-guide">{FIND_PW_GUIDE}</p>
+            <p key={`guide-${mode}`} className="auth-guide">
+              {lastGuideRef.current}
+            </p>
           </Collapse>
 
-          {/* 이름 (회원가입일 때만) */}
-          <Collapse open={isSignup}>
+          {/* 이름 (회원가입 / 이메일 찾기) */}
+          <Collapse open={isSignup || isFindEmail}>
             <AuthField
               icon={<FaUser />}
               inputRef={inputRefs.name}
@@ -433,21 +609,65 @@ function Login() {
             />
           </Collapse>
 
-          {/* 이메일 (모든 모드 공통) */}
-          <AuthField
-            icon={<FaEnvelope />}
-            inputRef={inputRefs.email}
-            invalid={isInvalid("email")}
-            type="email"
-            placeholder="이메일"
-            aria-label="이메일"
-            value={email}
-            onChange={handleEmailChange}
-            autoComplete={isSignup ? "email" : "username"}
-            autoCapitalize="none"
-            autoCorrect="off"
-            spellCheck="false"
-          />
+          {/* 이메일 (이메일 찾기만 빼고 공통) */}
+          <Collapse open={!isFindEmail} flush>
+            <AuthField
+              icon={<FaEnvelope />}
+              inputRef={inputRefs.email}
+              invalid={isInvalid("email")}
+              type="email"
+              placeholder="이메일"
+              aria-label="이메일"
+              value={email}
+              onChange={handleEmailChange}
+              autoComplete={isSignup ? "email" : "username"}
+              autoCapitalize="none"
+              autoCorrect="off"
+              spellCheck="false"
+            />
+          </Collapse>
+
+          {/* 휴대폰 번호 + 인증번호 (이메일 찾기일 때만) */}
+          <Collapse open={isFindEmail}>
+            <AuthField
+              icon={<FaMobileAlt />}
+              inputRef={inputRefs.phone}
+              invalid={isInvalid("phone")}
+              type="tel"
+              inputMode="numeric"
+              placeholder="휴대폰 번호"
+              aria-label="휴대폰 번호"
+              value={phone}
+              onChange={handlePhoneChange}
+              autoComplete="tel"
+              trailing={
+                <button
+                  type="button"
+                  className="auth-inline-button"
+                  onClick={handleSendCode}
+                  disabled={isSendingCode || isBusy}
+                >
+                  {isSendingCode && <span className="auth-spinner" />}
+                  {isCodeSent ? "재전송" : "인증번호 받기"}
+                </button>
+              }
+            />
+          </Collapse>
+
+          <Collapse open={isFindEmail}>
+            <AuthField
+              icon={<FaKey />}
+              inputRef={inputRefs.code}
+              invalid={isInvalid("code")}
+              type="text"
+              inputMode="numeric"
+              placeholder="인증번호"
+              aria-label="인증번호"
+              value={code}
+              onChange={handleCodeChange}
+              autoComplete="one-time-code"
+            />
+          </Collapse>
 
           {/* 비밀번호 */}
           <Collapse open={!isFind}>
@@ -497,7 +717,7 @@ function Login() {
             </p>
           </Collapse>
 
-          {/* 로그인 상태 유지 + 비밀번호 찾기 */}
+          {/* 로그인 상태 유지 + 이메일 / 비밀번호 찾기 */}
           <Collapse open={mode === "login"} options>
             <div className="auth-options">
               <label className="remember-me">
@@ -513,6 +733,16 @@ function Login() {
               </label>
 
               <div className="auth-find-links">
+                <button
+                  type="button"
+                  className="auth-link"
+                  onClick={() => switchMode("findEmail")}
+                >
+                  이메일 찾기
+                </button>
+
+                <span className="auth-find-sep" aria-hidden="true">|</span>
+
                 <button
                   type="button"
                   className="auth-link"
@@ -582,10 +812,11 @@ function Login() {
 
 
 /* 높이를 0 ↔ 내용 높이로 부드럽게 접고 펼친다. 접힌 동안은 탭 이동도 막는다 */
-function Collapse({ open, tight, hint, message, options, children }) {
+function Collapse({ open, tight, flush, hint, message, options, children }) {
   const bodyClass = [
     "auth-collapse-body",
     tight && "is-tight",
+    flush && "is-flush",
     hint && "is-hint",
     message && "is-message",
     options && "is-options"

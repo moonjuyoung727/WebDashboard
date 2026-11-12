@@ -65,7 +65,7 @@ const CLIENT_VPN_TEXT = {
 
 function Dashboard() {
   const navigate = useNavigate();
-  const { peerVpnStatus, setPeerVpnStatus, checkClientVpn } = useVpn();
+  const { peerVpnStatus, checkClientVpn } = useVpn();
 
   const [period, setPeriod] = useState("today");
   const [vpnFilter, setVpnFilter] = useState("all");
@@ -79,7 +79,7 @@ function Dashboard() {
     source: eventSource,
     errorMessage: eventErrorMessage,
     isReady: isEventReady,
-  } = useServerResource(loadDashboardEvents, { pollMs: EVENT_POLL_MS });
+  } = useServerResource(loadDashboardEvents, { pollMs: EVENT_POLL_MS, followAutoRefresh: true });
 
   const events = useMemo(() => eventData?.events ?? [], [eventData]);
 
@@ -297,16 +297,6 @@ function Dashboard() {
               >
                 <FiRefreshCw className={peerVpnStatus === "connecting" ? "spin" : ""} />
                 연결 확인
-              </button>
-
-              {/* 시연용: 서버 연결 후 삭제 */}
-              <button
-                type="button"
-                className="client-vpn-demo"
-                onClick={() => setPeerVpnStatus("error")}
-                title="연결 끊김 시뮬레이션"
-              >
-                <span className="demo-tag">DEMO</span> 끊김
               </button>
             </div>
           </div>

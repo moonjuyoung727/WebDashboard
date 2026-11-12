@@ -89,7 +89,8 @@
   pointer-events: none;
 }
 
-.cam-stream-status.failed {
+.cam-stream-status.failed,
+.cam-stream-status.paused {
   color: var(--danger);
 }
 

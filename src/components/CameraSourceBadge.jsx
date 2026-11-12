@@ -12,7 +12,7 @@ function sourceLabel(source, fetchedAt) {
     case "stale":
       return `서버 응답 없음 · ${formatClock(fetchedAt)} 데이터 표시 중`;
     case "error":
-      return "서버 연결 실패 · 5초마다 재시도";
+      return "서버 연결 실패 · 15초마다 재시도";
     default:
       return "서버에서 불러오는 중...";
   }

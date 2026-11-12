@@ -1,23 +1,18 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useLocation } from "react-router-dom";
 import { FiAlertTriangle, FiX } from "react-icons/fi";
 import { useVpn } from "../../context/VpnContext";
 import { VPN_CHECK_MESSAGE } from "../../api/client";
-import {
-  VPN_SERVER_IP,
-  VPN_PORT,
-  VPN_CLIENT_SUBNET,
-  subnetHost
-} from "../../api/config";
-import Modal from "../Modal";
-import "../Modal.css";
+import { VPN_SERVER_IP } from "../../api/config";
+import VpnGuideModal from "./VpnGuideModal";
 import "./VpnAlertBanner.css";
 
 // Client VPN 연결 이상 시 재연결 안내 (WEB-F-050)
 // MainLayout 상단에 표시 — peerVpnStatus 가 error 일 때만 노출
 // (서버가 VPN 미연결로 응답하거나, API 요청이 서버에 닿지 못했을 때)
+// VPN 서버 연결 확인 화면(/vpn-check)은 화면 자체가 같은 안내를 보여 주므로 배너를 숨긴다
 function VpnAlertBanner() {
-  const navigate = useNavigate();
+  const location = useLocation();
   const { peerVpnStatus, checkClientVpn } = useVpn();
 
   const [isGuideOpen, setIsGuideOpen] = useState(false);
@@ -30,7 +25,11 @@ function VpnAlertBanner() {
     }
   }, [peerVpnStatus]);
 
-  if (peerVpnStatus !== "error" || isHidden) {
+  if (
+    peerVpnStatus !== "error" ||
+    isHidden ||
+    location.pathname === "/vpn-check"
+  ) {
     return null;
   }
 
@@ -71,60 +70,11 @@ function VpnAlertBanner() {
       </div>
 
       {isGuideOpen && (
-        <Modal
-          title="VPN 재연결 안내"
+        <VpnGuideModal
           onClose={() => setIsGuideOpen(false)}
-          footer={
-            <>
-              <button
-                type="button"
-                className="btn"
-                onClick={() => {
-                  setIsGuideOpen(false);
-                  navigate("/vpn-manage");
-                }}
-              >
-                VPN 연결 관리
-              </button>
-              <button type="button" className="btn primary" onClick={handleRetry}>
-                연결 다시 확인
-              </button>
-            </>
-          }
-        >
-          <ol className="vpn-guide-steps">
-            <li>
-              <strong>VPN 클라이언트 실행 확인</strong>
-              <p>PC에 설치된 WireGuard(VPN) 클라이언트가 실행 중인지 확인하세요.</p>
-            </li>
-            <li>
-              <strong>터널 활성화</strong>
-              <p>SECURE CAM 터널을 선택하고 [활성화] 버튼을 눌러 연결하세요.</p>
-            </li>
-            <li>
-              <strong>VPN 주소 확인</strong>
-              <p>
-                터널이 켜지면 PC에 {subnetHost(VPN_CLIENT_SUBNET, "x")} 주소({VPN_CLIENT_SUBNET})가 할당됩니다.
-                다른 주소이거나 주소가 없으면 VPN 설정 파일을 다시 받아 적용하세요.
-              </p>
-            </li>
-            <li>
-              <strong>네트워크 확인</strong>
-              <p>
-                인터넷 연결이 정상인지, 회사/공용 네트워크에서 VPN 포트(UDP {VPN_PORT})가
-                차단되지 않았는지 확인하세요.
-              </p>
-            </li>
-            <li>
-              <strong>연결 다시 확인</strong>
-              <p>아래 [연결 다시 확인] 버튼을 눌러 내부 서버 연결을 재확인하세요.</p>
-            </li>
-          </ol>
-
-          {peerVpnStatus === "connecting" && (
-            <p className="vpn-guide-status">연결 상태를 확인하는 중...</p>
-          )}
-        </Modal>
+          onRetry={handleRetry}
+          isChecking={peerVpnStatus === "connecting"}
+        />
       )}
     </>
   );

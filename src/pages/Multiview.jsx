@@ -272,8 +272,8 @@ function Multiview() {
               channel={channelNo.get(camera.device_id)}
               now={now}
               highlighted={highlightId === camera.device_id}
-              // 서버 연결 후 getLowResStreams(현재 페이지 카메라 ID) 응답의 streamUrl 로 교체
-              streamUrl={camera.lowResStreamUrl ?? null}
+              // 멀티뷰는 저화질 WHEP 주소(2.2.1 webrtc_url_sub)로 재생한다
+              streamUrl={camera.lowResStreamUrl}
             />
           ))}
 

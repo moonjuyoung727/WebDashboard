@@ -36,10 +36,11 @@ function CameraRegisterModal({ onClose, onRegister, registeredMacs = [] }) {
 
     setSubmitted(true);
 
+    // MAC · 설치 위치는 필수, 이름은 비워 두면 서버가 자동으로 붙인다
     const isMacEmpty = !macAddress;
-    const isNameEmpty = !cameraName.trim();
+    const isLocationEmpty = !location.trim();
 
-    if (isMacEmpty || isNameEmpty) {
+    if (isMacEmpty || isLocationEmpty) {
       setErrorMessage("필수 항목을 모두 입력해주세요.");
       return;
     }
@@ -66,8 +67,8 @@ function CameraRegisterModal({ onClose, onRegister, registeredMacs = [] }) {
 
     const newCamera = {
       mac: normalizeMac(macAddress),
-      name: cameraName.trim(),
-      location: location.trim() || "미설정",
+      name: cameraName.trim(),  // 빈 문자열이면 registerCamera가 본문에서 뺀다
+      location: location.trim(),
     };
 
     // 서버 등록이 실패하면 모달을 닫지 않고 오류 메시지를 보여 준다
@@ -149,19 +150,14 @@ function CameraRegisterModal({ onClose, onRegister, registeredMacs = [] }) {
             <label>
               <FiTag className="register-label-icon" />
               카메라 이름
-              <span className="required-mark">*</span>
             </label>
             <div className="camera-name-input-wrapper">
               <input
                 type="text"
-                placeholder="예: CAM-01 (출입구)"
+                placeholder="비워 두면 자동으로 지정됩니다"
                 maxLength={15}
                 value={cameraName}
-                className={
-                  (submitted && !cameraName.trim()) || cameraNameError
-                    ? "input-error"
-                    : ""
-                }
+                className={cameraNameError ? "input-error" : ""}
                 onChange={(event) => {
                   const value = event.target.value;
 
@@ -196,6 +192,7 @@ function CameraRegisterModal({ onClose, onRegister, registeredMacs = [] }) {
             <label>
               <FiMapPin className="register-label-icon" />
               설치 위치
+              <span className="required-mark">*</span>
             </label>
             <div className="camera-location-input-wrapper">
               <input
@@ -203,9 +200,11 @@ function CameraRegisterModal({ onClose, onRegister, registeredMacs = [] }) {
                 placeholder="예: 1층 출입구"
                 maxLength={30}
                 value={location}
-                onChange={(event) =>
-                  setLocation(event.target.value)
-                }
+                className={submitted && !location.trim() ? "input-error" : ""}
+                onChange={(event) => {
+                  setLocation(event.target.value);
+                  setErrorMessage("");
+                }}
               />
               <span className={`input-character-count ${
                   location.length === 30 ? "limit" : ""

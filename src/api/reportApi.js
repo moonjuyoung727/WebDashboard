@@ -3,7 +3,7 @@
 /*
   통계 및 리포트 API — 서버 연결 후 주석 해제
   [명세 없음] ICD에 통계 API가 없다
-  현재 Reports.jsx는 data/statisticsMock.js 목업 데이터 사용
+  현재 Reports.jsx는 보드 목록(2.2.1) · 이벤트 목록(2.3.1) 응답을 화면에서 집계해서 쓴다
 */
 
 /* WEB-F-040 / WEB-F-042 통계 데이터 조회 (조건 적용)

@@ -3,6 +3,7 @@
 // - 401이면 토큰을 지우고 로그인 화면으로 보낸다
 // - 서버 오류 응답은 ApiError로 바꿔 message를 화면에 띄운다
 // - 서버에 아예 닿지 못하면(네트워크 오류) NetworkError를 던지고 "VPN 연결을 확인하세요" 안내를 띄운다
+// - 서버에서 응답이 오면 VPN_SERVER_REACHABLE_EVENT를 보낸다 (VPN 끊김 상태라면 /status를 바로 다시 확인하게)
 
 import { API_BASE_URL } from "./config";
 import {
@@ -16,6 +17,11 @@ export const API_ERROR_EVENT = "api-error";
 
 // VpnContext가 이 이벤트를 듣고 VPN 안내 배너를 띄운다
 export const VPN_UNREACHABLE_EVENT = "vpn-unreachable";
+
+// 서버에서 응답이 왔을 때(오류 응답 포함) 보내는 이벤트
+// VpnContext는 Client VPN이 끊긴 상태일 때만 이를 듣고 GET /status 확인을 바로 앞당긴다
+// 이 응답으로 연결됨을 정하지는 않는다 (CloudFront를 거친 응답일 수 있어서, 판정은 /status의 client_ip로만 한다)
+export const VPN_SERVER_REACHABLE_EVENT = "vpn-server-reachable";
 
 const SESSION_EXPIRED_MESSAGE = "로그인이 만료되었습니다. 다시 로그인해 주세요.";
 export const VPN_CHECK_MESSAGE = "서버에 접근할 수 없습니다. VPN 연결을 확인하세요.";
@@ -67,7 +73,8 @@ async function readErrorBody(response) {
 }
 
 // timeoutMs를 주면 그 시간이 지나 요청을 끊는다. path가 전체 주소면 베이스 URL을 붙이지 않는다
-export async function apiFetch(path, { headers, timeoutMs, ...options } = {}) {
+// reportReachable: false면 응답이 와도 VPN_SERVER_REACHABLE_EVENT를 보내지 않는다 (/status 확인 요청 자신)
+export async function apiFetch(path, { headers, timeoutMs, reportReachable = true, ...options } = {}) {
   const token = getAccessToken();
 
   if (timeoutMs) {
@@ -96,6 +103,10 @@ export async function apiFetch(path, { headers, timeoutMs, ...options } = {}) {
     throw new NetworkError(cause);
   }
 
+  if (reportReachable) {
+    window.dispatchEvent(new CustomEvent(VPN_SERVER_REACHABLE_EVENT));
+  }
+
   // 로그인한 상태에서 401: 토큰이 만료되었거나 유효하지 않음
   if (response.status === 401 && token && !path.includes("/auth/login")) {
     const error = new ApiError(401, await readErrorBody(response), SESSION_EXPIRED_MESSAGE);
@@ -111,7 +122,7 @@ export async function apiFetch(path, { headers, timeoutMs, ...options } = {}) {
 }
 
 // 실패한 응답을 ApiError로 바꾼다. 서버 message가 없으면 fallbackMessage를 쓴다
-// notify: false면 오류 토스트를 띄우지 않는다 (5초 주기 자동 재조회처럼 같은 오류가 반복되는 요청용)
+// notify: false면 오류 토스트를 띄우지 않는다 (주기적인 자동 재조회 · 재시도처럼 같은 오류가 반복되는 요청용)
 export async function toApiError(response, fallbackMessage, { notify = true } = {}) {
   const error = new ApiError(response.status, await readErrorBody(response), fallbackMessage);
 

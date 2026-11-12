@@ -1,4 +1,5 @@
-import { apiClient } from "./client.js";
+import { apiClient, apiFetch, toApiError } from "./client.js";
+import { isInSubnet, VPN_CLIENT_SUBNET } from "./config.js";
 
 // A separate VPN deployment may override the shared controller /v1 base.
 const VPN_BASE_URL = (process.env.REACT_APP_VPN_API_BASE_URL || "").replace(
@@ -7,7 +8,7 @@ const VPN_BASE_URL = (process.env.REACT_APP_VPN_API_BASE_URL || "").replace(
 );
 const endpoint = (path) =>
   VPN_BASE_URL ? `${VPN_BASE_URL}/vpn${path}` : `/vpn${path}`;
-const optionsWithTimeout = (options = {}) => ({ timeoutMs: 15000, ...options });
+const optionsWithTimeout = (options = {}) => ({ timeoutMs: 10000, ...options });
 
 export function normalizeConnections(connections) {
   if (!Array.isArray(connections))
@@ -99,8 +100,32 @@ export async function loadVpnData(options) {
 }
 export default vpnApi;
 
-// New UI compatibility: check authenticated reachability, never invent a /status tunnel API.
-export async function fetchClientVpnStatus(options) { await loadVpnData(options); return true; }
+// 클라이언트 VPN 연결 여부 확인: GET /v1/status (인증 없음, 항상 200)
+// 서버는 요청의 출발지 IP가 클라이언트 대역(10.0.2.0/24)인지 보고 { connected, client_ip }로 응답한다
+// VPN이 꺼져 있으면 요청이 서버에 닿지 않는다. timeoutMs가 지나면 apiFetch가 NetworkError를 던지고,
+// VpnContext가 이를 연결 실패로 처리한다
+const CLIENT_VPN_CHECK_TIMEOUT_MS = 5000;
+
+export async function fetchClientVpnStatus(options = {}) {
+  const response = await apiFetch(`/status`, {
+    timeoutMs: CLIENT_VPN_CHECK_TIMEOUT_MS,
+    reportReachable: false,  // 확인 요청 자신의 응답으로 확인을 다시 부르지 않게
+    ...options,
+  });
+
+  if (!response.ok) {
+    throw await toApiError(response, "VPN 상태 확인 실패");
+  }
+
+  const data = await response.json();
+
+  // 서버가 알려 준 주소가 클라이언트 대역이 아니면 VPN을 거치지 않은 요청이다
+  if (data.client_ip && !isInSubnet(data.client_ip, VPN_CLIENT_SUBNET)) {
+    return false;
+  }
+
+  return data.connected === true;
+}
 export async function getVpnDevices({ silent = false, ...options } = {}) { return (await loadVpnData({ ...options, notify: !silent })).devices; }
 export const changeVpnConnection = (id, action, options) => vpnApi.executeVpnAction(id, action, options);
 export const requestVpnRecovery = (id, options) => vpnApi.recoverVpnConnection(id, options);

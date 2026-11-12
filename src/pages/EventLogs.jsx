@@ -85,7 +85,7 @@ function EventLogs() {
     setData: setEvents,
   } = useServerResource(
     ({ silent }) => getAllEvents({ startDate: from, endDate: to, silent }),
-    { pollMs: EVENT_POLL_MS, key: `${from}_${to}` }
+    { pollMs: EVENT_POLL_MS, key: `${from}_${to}`, followAutoRefresh: true }
   );
 
   const events = useMemo(() => data ?? [], [data]);

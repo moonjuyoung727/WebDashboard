@@ -1,28 +1,49 @@
 import { apiFetch, toApiError } from "./client";
 
-/* 일반 설정 [명세 없음] */
-export async function getGeneralSettings() {
-  const response = await apiFetch(`/general-settings`);
+// 설정 조회 공통: VPN이 끊겨 있으면 응답 없이 오래 걸려서 5초가 지나면 끊는다
+// (시간 초과는 NetworkError → "서버에 접근할 수 없습니다. VPN 연결을 확인하세요.")
+// silent: true면 실패해도 오류 토스트를 띄우지 않는다 (useServerResource의 자동 재시도용)
+const READ_TIMEOUT_MS = 5000;
+
+async function getJson(path, fallbackMessage, { silent = false } = {}) {
+  const response = await apiFetch(path, { timeoutMs: READ_TIMEOUT_MS });
 
   if (!response.ok) {
-    throw await toApiError(response, "일반 설정 정보 조회 실패");
+    throw await toApiError(response, fallbackMessage, { notify: !silent });
   }
 
   return response.json();
 }
 
-export async function updateGeneralSetting(key, value) {
-  const response = await apiFetch(`/general-settings/${key}`, {
-    method: "PATCH",
-    headers: {
-      "Content-Type": "application/json"
-    },
-    body: JSON.stringify({ value })
+async function sendJson(path, method, body, fallbackMessage) {
+  const response = await apiFetch(path, {
+    method,
+    ...(body !== undefined && {
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify(body)
+    })
   });
 
   if (!response.ok) {
-    throw await toApiError(response, "설정 업데이트 실패");
+    throw await toApiError(response, fallbackMessage);
   }
+
+  // 응답 본문이 없을 수도 있다
+  const text = await response.text();
+  return text ? JSON.parse(text) : null;
+}
+
+
+/* 일반 설정 [명세 없음]
+   응답: { autoRefresh, showOfflineBoards, defaultChannel } */
+export async function getGeneralSettings(options) {
+  return getJson(`/general-settings`, "일반 설정 조회에 실패했습니다.", options);
+}
+
+export async function updateGeneralSetting(key, value) {
+  await sendJson(`/general-settings/${encodeURIComponent(key)}`, "PATCH", { value }, "일반 설정 변경에 실패했습니다.");
 }
 
 
@@ -31,11 +52,11 @@ export async function updateGeneralSetting(key, value) {
 // 서버 응답(snake_case)을 알림 설정 화면에서 쓰는 모양으로 바꾼다
 function toNotificationSettings(data) {
   return {
-    motion: data.motion_alert,
-    sound: data.sound_alert,
-    offline: data.offline_alert,
-    reconnect: data.reconnect_alert,
-    importantOnly: data.important_only,
+    motion: Boolean(data.motion_alert),
+    sound: Boolean(data.sound_alert),
+    offline: Boolean(data.offline_alert),
+    reconnect: Boolean(data.reconnect_alert),
+    importantOnly: Boolean(data.important_only),
     deviceAlerts: (data.device_alerts ?? []).map((item) => ({
       mac: item.mac,
       enabled: item.enabled
@@ -44,24 +65,18 @@ function toNotificationSettings(data) {
 }
 
 // 2.7.1 알림 설정 조회
-export async function getNotificationSettings() {
-  const response = await apiFetch(`/notifications/settings`);
-
-  if (!response.ok) {
-    throw await toApiError(response, "알림 설정 정보 조회 실패");
-  }
-
-  return toNotificationSettings(await response.json());
+export async function getNotificationSettings(options) {
+  return toNotificationSettings(
+    await getJson(`/notifications/settings`, "알림 설정 조회에 실패했습니다.", options)
+  );
 }
 
 // 2.7.2 알림 설정 수정 — 항목별 수정이 없어서 전체 설정을 한 번에 저장한다
 export async function updateNotificationSettings(settings) {
-  const response = await apiFetch(`/notifications/settings`, {
-    method: "PUT",
-    headers: {
-      "Content-Type": "application/json"
-    },
-    body: JSON.stringify({
+  await sendJson(
+    `/notifications/settings`,
+    "PUT",
+    {
       motion_alert: settings.motion,
       sound_alert: settings.sound,
       offline_alert: settings.offline,
@@ -71,117 +86,70 @@ export async function updateNotificationSettings(settings) {
         mac: item.mac,
         enabled: item.enabled
       }))
-    })
-  });
-
-  if (!response.ok) {
-    throw await toApiError(response, "설정 변경 실패");
-  }
-}
-
-
-/* 구독 설정 [명세 없음] */
-export async function updateAutoRenew(enabled) {
-  const response = await apiFetch(`/subscriptions/auto-renew`, {
-    method: "PATCH",
-    headers: {
-      "Content-Type": "application/json"
     },
-    body: JSON.stringify({ enabled })
-  });
-
-  if (!response.ok) {
-    throw await toApiError(response, "자동 갱신 변경 실패");
-  }
+    "알림 설정 변경에 실패했습니다."
+  );
 }
 
 
-/* ===== 추가 예정 API — 서버 연결 후 주석 해제 ===== */
+/* ===== 구독 · 결제 수단 (WEB-F-061) [명세 없음] ===== */
 
-/* WEB-F-061 구독 정보 조회 [명세 없음]
-   응답: { plan, status, paymentStatus, nextPaymentDate, autoRenew }
-
-export async function getSubscription() {
-  const response = await apiFetch(`/subscriptions`);
-
-  if (!response.ok) {
-    throw await toApiError(response, "구독 정보 조회 실패");
-  }
-
-  return response.json();
+/* 구독 정보 조회
+   응답: { plan, status, nextPaymentDate, autoRenew }
+   plan: 요금제 이름 (예: "Standard"), status: active | expired */
+export async function getSubscription(options) {
+  return getJson(`/subscriptions`, "구독 정보 조회에 실패했습니다.", options);
 }
-*/
 
+/* 요금제 목록 조회
+   응답: [{ id, name, price, features: [] }] */
+export async function getSubscriptionPlans(options) {
+  const data = await getJson(`/subscriptions/plans`, "요금제 목록 조회에 실패했습니다.", options);
 
-/* WEB-F-061 구독 플랜 변경 [명세 없음]
+  return Array.isArray(data) ? data : data?.plans ?? [];
+}
 
+// 요금제 변경
 export async function changeSubscriptionPlan(planId) {
-  const response = await apiFetch(`/subscriptions/plan`, {
-    method: "PATCH",
-    headers: {
-      "Content-Type": "application/json"
-    },
-    body: JSON.stringify({ planId })
-  });
-
-  if (!response.ok) {
-    throw await toApiError(response, "요금제 변경 실패");
-  }
-
-  return response.json();
-}
-*/
-
-
-/* WEB-F-061 결제 수단 조회 / 등록 / 기본 결제 수단 변경 / 삭제 [명세 없음]
-   카드 정보는 PG사 결제창(토큰화)으로 등록 — 프론트에서 카드 번호를 직접 전송하지 않음
-
-export async function getPaymentMethods() {
-  const response = await apiFetch(`/payment-methods`);
-
-  if (!response.ok) {
-    throw await toApiError(response, "결제 수단 조회 실패");
-  }
-
-  return response.json();
+  return sendJson(`/subscriptions/plan`, "PATCH", { planId }, "요금제 변경에 실패했습니다.");
 }
 
+// 자동 갱신 변경
+export async function updateAutoRenew(enabled) {
+  await sendJson(`/subscriptions/auto-renew`, "PATCH", { enabled }, "자동 갱신 변경에 실패했습니다.");
+}
+
+/* 결제 수단 조회
+   카드 정보는 PG사 결제창(토큰화)으로 등록 — 프론트에서 카드 번호를 직접 보내지 않는다
+   응답: [{ id, brand, last4, expiry, isDefault }] */
+export async function getPaymentMethods(options) {
+  const data = await getJson(`/payment-methods`, "결제 수단 조회에 실패했습니다.", options);
+
+  return Array.isArray(data) ? data : data?.items ?? [];
+}
+
+// 결제 수단 등록 (PG 결제창이 돌려준 빌링키)
 export async function addPaymentMethod(billingKey) {
-  const response = await apiFetch(`/payment-methods`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json"
-    },
-    body: JSON.stringify({ billingKey })
-  });
-
-  if (!response.ok) {
-    throw await toApiError(response, "결제 수단 등록 실패");
-  }
-
-  return response.json();
+  return sendJson(`/payment-methods`, "POST", { billingKey }, "결제 수단 등록에 실패했습니다.");
 }
 
 export async function setDefaultPaymentMethod(paymentMethodId) {
-  const response = await apiFetch(`/payment-methods/${paymentMethodId}/default`, {
-    method: "PATCH"
-  });
-
-  if (!response.ok) {
-    throw await toApiError(response, "기본 결제 수단 변경 실패");
-  }
+  await sendJson(
+    `/payment-methods/${encodeURIComponent(paymentMethodId)}/default`,
+    "PATCH",
+    undefined,
+    "기본 결제 수단 변경에 실패했습니다."
+  );
 }
 
 export async function deletePaymentMethod(paymentMethodId) {
-  const response = await apiFetch(`/payment-methods/${paymentMethodId}`, {
-    method: "DELETE"
-  });
-
-  if (!response.ok) {
-    throw await toApiError(response, "결제 수단 삭제 실패");
-  }
+  await sendJson(
+    `/payment-methods/${encodeURIComponent(paymentMethodId)}`,
+    "DELETE",
+    undefined,
+    "결제 수단 삭제에 실패했습니다."
+  );
 }
-*/
 
 
 // WEB-F-063 저장소 설정 조회 / 변경 (ICD 2.4.3)
@@ -192,16 +160,8 @@ const QUALITY_TO_SERVER = { low: "SD", medium: "HD", high: "FHD" };
 const QUALITY_FROM_SERVER = { SD: "low", HD: "medium", FHD: "high" };
 
 // 2.4.3.1 저장소 설정 및 사용량 조회
-export async function getStorageSettings() {
-  const response = await apiFetch(`/storage/settings`, {
-    signal: AbortSignal.timeout(5000)
-  });
-
-  if (!response.ok) {
-    throw await toApiError(response, "저장소 설정 조회에 실패했습니다.");
-  }
-
-  const data = await response.json();
+export async function getStorageSettings(options) {
+  const data = await getJson(`/storage/settings`, "저장소 설정 조회에 실패했습니다.", options);
 
   return {
     autoSave: data.auto_save_enabled,
@@ -216,21 +176,16 @@ export async function getStorageSettings() {
 
 // 2.4.3.2 저장소 설정 수정. 응답 본문이 명세에 없어서 저장 후 다시 조회해 돌려준다
 export async function updateStorageSettings({ autoSave, quality, retentionDays }) {
-  const response = await apiFetch(`/storage/settings`, {
-    method: "PUT",
-    headers: {
-      "Content-Type": "application/json"
-    },
-    body: JSON.stringify({
+  await sendJson(
+    `/storage/settings`,
+    "PUT",
+    {
       auto_save_enabled: autoSave,
       retention_days: retentionDays,
       video_quality: QUALITY_TO_SERVER[quality]
-    })
-  });
-
-  if (!response.ok) {
-    throw await toApiError(response, "저장소 설정 변경 실패");
-  }
+    },
+    "저장소 설정 변경에 실패했습니다."
+  );
 
   return getStorageSettings();
 }

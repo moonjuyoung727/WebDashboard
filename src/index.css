@@ -42,9 +42,9 @@
     inset -3px -3px 7px var(--sh-light);
 
   /* 반경 */
-  --radius-lg: 18px;
-  --radius-md: 12px;
-  --radius-sm: 10px;
+  --radius-lg: 16px;
+  --radius-md: 10px;
+  --radius-sm: 8px;
 }
 
 body {

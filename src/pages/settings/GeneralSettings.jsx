@@ -1,91 +1,57 @@
 import { useEffect, useState } from "react";
 import Toggle from "../../components/Toggle";
-import { getGeneralSettings } from "../../api/settingsApi";
-// import { getGeneralSettings, updateGeneralSetting } from "../../api/settingsApi";  // 서버 연결 후 저장 호출 주석 해제 시
+import LoadStateNotice from "../../components/LoadStateNotice";
+import useServerResource from "../../hooks/useServerResource";
+import { getGeneralSettings, updateGeneralSetting } from "../../api/settingsApi";
+import { useGeneralSettings } from "../../context/GeneralSettingsContext";
 import "./Settings.css";
 
+// 일반 설정 — 바꾸면 서버에 바로 저장하고, 실패하면 이전 값으로 되돌린다
+// 바꾼 값은 전역 일반 설정(GeneralSettingsContext)에도 바로 반영해서, 각 화면의 반복 조회가 곧바로 따라간다
 function GeneralSettings() {
-  const [settings, setSettings] = useState({
-    autoRefresh: true,
-    showOfflineBoards: true,
-    defaultChannel: 6
-  });
+  const { data: settings, source, errorMessage, fetchedAt, setData } = useServerResource(getGeneralSettings);
+  const { setGeneralSettings } = useGeneralSettings();
+  const [saveError, setSaveError] = useState("");
 
+  // 서버에서 새로 받은 값을 전역 설정에도 반영한다 (메인 화면이 뜰 때의 조회가 실패했던 경우도 여기서 맞춰진다)
   useEffect(() => {
-    async function loadGeneralSettings() {
-        try {
-            const data = await getGeneralSettings();
-
-            setSettings(data);
-        } catch (error) {
-            console.error(error);
-        }
+    if (settings && fetchedAt) {
+      setGeneralSettings(settings);
     }
-    loadGeneralSettings();
-  },[]);
+    // 새로 받았을 때만 반영한다 (값을 바꿀 때는 handleChange가 반영한다)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fetchedAt]);
 
-  //서버 연결 후에는 삭제
-function handleToggle(key) {
-  setSettings((prev) => ({
-    ...prev,
-    [key]: !prev[key]
-  }));
-}
+  if (!settings) {
+    return (
+      <div className="settings-section">
+        <h2>일반 설정</h2>
+        <LoadStateNotice source={source} subject="일반 설정을" message={errorMessage} />
+      </div>
+    );
+  }
 
-function handleChannelChange(e) {
-  const newChannel = Number(e.target.value);
+  async function handleChange(key, value) {
+    const previous = settings[key];
 
-  setSettings((prev) => ({
-    ...prev,
-    defaultChannel: newChannel
-  }));
-}
-
-  /*
-  async function handleToggle(key) {
-    const newValue = !settings[key];
-
-    setSettings((prev) => ({
-        ...prev,
-        [key]: newValue
-    }));
+    setSaveError("");
+    setData((prev) => ({ ...prev, [key]: value }));
+    setGeneralSettings({ [key]: value });
 
     try {
-        await updateGeneralSetting(key, newValue);
+      await updateGeneralSetting(key, value);
     } catch (error) {
-        console.error(error);
-        setSettings((prev) => ({
-            ...prev,
-            [key]: !newValue
-        }));
+      setData((prev) => ({ ...prev, [key]: previous }));
+      setGeneralSettings({ [key]: previous });
+      setSaveError(error.message);
     }
-  }  */
-
-/*
-  async function handleChannelChange(e) {
-    const newChannel = Number(e.target.value);
-    const oldChannel = settings.defaultChannel;
-
-    setSettings((prev) => ({
-        ...prev,
-        defaultChannel: newChannel
-    }));
-
-    try {
-        await updateGeneralSetting("defaultChannel", newChannel);
-    } catch (error) {
-        console.error(error);
-        setSettings((prev) => ({
-            ...prev,
-            defaultChannel: oldChannel
-        }));
-    }
-  }  */
-
+  }
 
   return (
     <div className="settings-section">
       <h2>일반 설정</h2>
+
+      {saveError && <p className="settings-error" role="alert">{saveError}</p>}
 
       <div className="setting-card">
         <div>
@@ -94,8 +60,8 @@ function handleChannelChange(e) {
         </div>
 
         <Toggle
-          checked={settings.autoRefresh}
-          onChange={() => handleToggle("autoRefresh")}
+          checked={Boolean(settings.autoRefresh)}
+          onChange={() => handleChange("autoRefresh", !settings.autoRefresh)}
         />
       </div>
 
@@ -106,8 +72,8 @@ function handleChannelChange(e) {
         </div>
 
         <Toggle
-          checked={settings.showOfflineBoards}
-          onChange={() => handleToggle("showOfflineBoards")}
+          checked={Boolean(settings.showOfflineBoards)}
+          onChange={() => handleChange("showOfflineBoards", !settings.showOfflineBoards)}
         />
       </div>
 
@@ -118,8 +84,8 @@ function handleChannelChange(e) {
         </div>
 
         <select
-          value={settings.defaultChannel}
-          onChange={handleChannelChange}
+          value={settings.defaultChannel ?? ""}
+          onChange={(e) => handleChange("defaultChannel", Number(e.target.value))}
         >
           <option value="2">2채널</option>
           <option value="4">4채널</option>

@@ -33,12 +33,33 @@ import useCameraList from "../hooks/useCameraList";
 import EditableCameraName from "../components/EditableCameraName";
 import LoadStateNotice from "../components/LoadStateNotice";
 import PrivacyZoneModal from "../components/privacy/PrivacyZoneModal";
-import { getZones } from "../data/privacyZoneStore";
+import useServerResource from "../hooks/useServerResource";
+import { getPrivacyZones } from "../api/privacyZoneApi";
 import useWebRtcStream from "../hooks/useWebRtcStream";
 import { formatLastSeen, formatUptime } from "../utils/formatDateTime";
 import { formatMac } from "../utils/mac";
 import useDigitalZoom, { MIN_ZOOM, MAX_ZOOM } from "../hooks/useDigitalZoom";
 import { updateCameraName } from "../api/cameraApi";
+
+// useWebRtcStream 상태 → 화면 문구
+const STREAM_STATUS_LABEL = {
+  idle: "연결 안 함 (오프라인)",
+  connecting: "연결 중",
+  connected: "재생 중",
+  reconnecting: "재연결 중",
+  failed: "연결 실패",
+  paused: "연결 대기 (VPN 끊김)",
+  noUrl: "영상 주소 없음",
+};
+
+// 영상 위에 띄우는 안내 (재생 중 · 오프라인일 때는 띄우지 않음)
+const STREAM_OVERLAY_TEXT = {
+  connecting: "영상 연결 중...",
+  reconnecting: "영상 연결이 끊겨 다시 연결하는 중...",
+  failed: "영상 연결에 실패했습니다. 자동으로 계속 다시 시도합니다. 새로고침을 누르면 바로 다시 연결합니다.",
+  paused: "Client VPN 연결이 끊겨 영상 연결을 멈췄습니다. VPN 연결을 다시 확인하면 자동으로 연결합니다.",
+  noUrl: "서버가 이 보드의 영상 주소(webrtc_url)를 보내지 않아 재생할 수 없습니다.",
+};
 
 function Monitoring() {
   const { cameraId } = useParams();
@@ -66,32 +87,48 @@ function Monitoring() {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [streamKey, setStreamKey] = useState(0);
 
-  // 실시간 영상 (WebRTC / WHEP)
-  // 나중에 서버 연결 시 camera.webrtcUrl 에 WHEP 엔드포인트 주소 (예: http://<서버>:8889/cam1/whep)
+  // 실시간 영상 (WebRTC / WHEP) — camera.webrtcUrl 이 WHEP 엔드포인트 주소 (2.2.1 webrtc_url, 예: http://10.0.0.100:8889/CAM-E099/whep)
+  // offline 보드는 주소 대신 null 을 넘겨 연결하지 않는다 (멀티뷰 CameraCard 와 같음)
+  // 끊기면 훅이 자동으로 다시 연결하고, 새로고침 버튼(streamKey)은 즉시 처음부터 다시 연결한다
   const videoRef = useRef(null);
+  const isLiveOnline = liveCamera?.status === "online";
   const streamStatus = useWebRtcStream(
     videoRef,
-    liveCamera?.webrtcUrl ?? null,
+    isLiveOnline ? liveCamera.webrtcUrl : null,
     streamKey
   );
+
+  // 화면 표시용 상태. online인데 webrtc_url이 null이면 훅은 idle(오프라인과 같음)이라 따로 구분한다
+  const streamView = isLiveOnline && !liveCamera.webrtcUrl ? "noUrl" : streamStatus;
 
   // 디지털 줌
   const stageRef = useRef(null);
   const zoom = useDigitalZoom(stageRef);
   const resetZoom = zoom.reset;
 
-  // 프라이버시 존 (WEB-F-024)
+  // 프라이버시 존 (WEB-F-024, ICD 2.6.1) — 보드 MAC을 알게 되면 서버에서 받는다
+  // 실패하면 15초마다 다시 시도한다 (useServerResource)
   const [isPrivacyOpen, setIsPrivacyOpen] = useState(false);
-  const [privacyZones, setPrivacyZones] = useState(() =>
-    getZones(cameraId)
+  const liveMac = liveCamera?.mac ?? "";
+  // 응답에 보드 MAC을 붙여 두어, 카메라를 바꾼 직후 이전 보드의 영역을 그리지 않게 한다
+  const {
+    data: zoneResult,
+    source: zoneSource,
+    setData: setZoneResult,
+  } = useServerResource(
+    async (options) =>
+      liveMac ? { mac: liveMac, zones: await getPrivacyZones(liveMac, options) } : null,
+    { key: liveMac }
   );
+  const isZoneReady = Boolean(liveMac) && zoneResult?.mac === liveMac;
+  const privacyZones = isZoneReady ? zoneResult.zones : [];
+  const setPrivacyZones = (zones) => setZoneResult({ mac: liveMac, zones });
 
 
   // URL에서 다른 카메라로 이동했을 때 정보 갱신
   useEffect(() => {
     setNameOverride(null);
     setIsEditingName(false);
-    setPrivacyZones(getZones(cameraId));
     resetZoom();
   }, [cameraId, resetZoom]);
 
@@ -287,11 +324,9 @@ function Monitoring() {
 
             {/* 연결 상태 안내 */}
 
-            {(streamStatus === "connecting" || streamStatus === "failed") && (
-              <div className={`stream-status ${streamStatus}`}>
-                {streamStatus === "connecting"
-                  ? "영상 연결 중..."
-                  : "영상 연결에 실패했습니다. 새로고침을 눌러 다시 시도하세요."}
+            {STREAM_OVERLAY_TEXT[streamView] && (
+              <div className={`stream-status ${streamView}`}>
+                {STREAM_OVERLAY_TEXT[streamView]}
               </div>
             )}
 
@@ -537,6 +572,24 @@ function Monitoring() {
 
           <div className="info-row">
             <span className="info-label">
+              <FiVideo />
+              영상
+            </span>
+
+            <span
+              className={`status-value ${
+                streamStatus === "connected" ? "online" : "offline"
+              }`}
+            >
+              <span className="status-dot" />
+
+              {STREAM_STATUS_LABEL[streamView]}
+            </span>
+          </div>
+
+
+          <div className="info-row">
+            <span className="info-label">
               <FiClock />
               마지막 수신 시간
             </span>
@@ -574,9 +627,11 @@ function Monitoring() {
             </span>
 
             <span className="info-value">
-              {privacyZones.length}개
-              {" "}
-              (활성 {privacyZones.filter((zone) => zone.enabled).length}개)
+              {isZoneReady
+                ? `${privacyZones.length}개 (활성 ${privacyZones.filter((zone) => zone.enabled).length}개)`
+                : zoneSource === "error"
+                  ? "불러오지 못했습니다"
+                  : "불러오는 중..."}
             </span>
           </div>
 

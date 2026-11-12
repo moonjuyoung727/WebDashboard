@@ -18,11 +18,12 @@ const RETENTION_OPTIONS = [7, 14, 30, 60, 90];
 
 // 저장소 설정 (WEB-F-063)
 function StorageSettings() {
-  const { data, source, errorMessage } = useServerResource(() => getStorageSettings());
+  const { data, source, errorMessage } = useServerResource(getStorageSettings);
 
   const [saved, setSaved] = useState(null);
   const [settings, setSettings] = useState(null);
   const [saveState, setSaveState] = useState("idle");
+  const [saveError, setSaveError] = useState("");
 
   useEffect(() => {
     if (data) {
@@ -57,6 +58,7 @@ function StorageSettings() {
 
   async function handleSave() {
     setSaveState("saving");
+    setSaveError("");
 
     try {
       const updated = await updateStorageSettings({
@@ -69,7 +71,7 @@ function StorageSettings() {
       setSettings(updated);
       setSaveState("done");
     } catch (error) {
-      console.error(error);
+      setSaveError(error.message);
       setSaveState("idle");
     }
   }
@@ -77,6 +79,8 @@ function StorageSettings() {
   return (
     <div className="settings-section">
       <h2>저장소 설정</h2>
+
+      {saveError && <p className="settings-error" role="alert">{saveError}</p>}
 
       {/* 사용량 */}
       <div className="storage-usage">

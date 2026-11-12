@@ -111,6 +111,13 @@
   font-size: 20px;
 }
 
+/* 설정 저장 실패 안내 (값은 이전으로 되돌린다) */
+.settings-error {
+  margin: 0 0 12px;
+  font-size: 13px;
+  color: var(--danger);
+}
+
 .setting-card {
   min-height: 55px;
 

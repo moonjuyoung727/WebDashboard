@@ -91,8 +91,10 @@ export async function logout() {
 /**
  * 현재 로그인 사용자 프로필 조회 (GET /auth/me)
  */
-export async function getMe() {
-  return apiClient.get("/auth/me");
+// silent: true면 실패해도 오류 토스트를 띄우지 않는다 (자동 재시도용)
+// VPN이 끊겨 있으면 응답 없이 오래 걸려서 5초가 지나면 끊는다
+export async function getMe({ silent = false } = {}) {
+  return apiClient.get("/auth/me", { notify: !silent, timeoutMs: 5000 });
 }
 
 /**
@@ -117,9 +119,10 @@ export async function verifyCode(target, code, type = "signup") {
 }
 
 /**
- * 아이디 찾기 (POST /auth/find-id, SV-F-002, ICD 2.1.4)
+ * 이메일(아이디) 찾기 (POST /auth/find-id, SV-F-002, ICD 2.1.4)
+ * 응답: { email } - 마스킹 처리된 이메일
  */
-export async function findId(name, phoneNumber, verificationCode) {
+export async function findEmail(name, phoneNumber, verificationCode) {
   return apiClient.post("/auth/find-id", {
     name,
     phone_number: phoneNumber,
@@ -154,7 +157,7 @@ export const authApi = {
   checkUserId,
   sendVerificationCode,
   verifyCode,
-  findId,
+  findEmail,
   forgotPassword,
   resetPassword,
 };

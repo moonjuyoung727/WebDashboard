@@ -704,16 +704,6 @@
    프라이버시 존 (WEB-F-024)
 ========================= */
 
-.privacy-mask {
-  position: absolute;
-
-  background-color: rgba(8, 8, 10, 0.95);
-  border: 1px solid rgba(189, 217, 215, 0.25);
-  border-radius: 3px;
-
-  pointer-events: none;
-}
-
 .privacy-zone-button {
   width: 100%;
 

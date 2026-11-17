@@ -272,7 +272,7 @@ function Monitoring() {
 
           <div className="real-time-video">
 
-            {/* 줌 영역 — 영상과 프라이버시 존 마스크를 같이 확대해야 위치가 어긋나지 않음 */}
+            {/* 줌 영역 — 프라이버시 존 마스킹은 보드가 영상에 직접 적용해서 보내므로 화면에서는 덮지 않는다 */}
             <div
               ref={stageRef}
               className={`zoom-stage${zoom.isZoomed ? " zoomed" : ""}${
@@ -300,23 +300,6 @@ function Monitoring() {
                     disablePictureInPicture
                   />
                 )}
-
-                {/* 프라이버시 존 마스킹 표시 */}
-                {privacyZones
-                  .filter((zone) => zone.enabled)
-                  .map((zone) => (
-                    <div
-                      key={zone.id}
-                      className="privacy-mask"
-                      style={{
-                        left: `${zone.x * 100}%`,
-                        top: `${zone.y * 100}%`,
-                        width: `${zone.width * 100}%`,
-                        height: `${zone.height * 100}%`,
-                      }}
-                      title={zone.name}
-                    />
-                  ))}
 
               </div>
             </div>

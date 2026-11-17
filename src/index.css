@@ -168,4 +168,3 @@ select option {
   .vpn-peer-message { white-space: normal; }
   .vpn-toolbar { flex-wrap: wrap; }
 }
-.peer-connect-button { background: transparent; color: inherit; border: 1px solid var(--line); border-radius: 6px; padding: 6px; cursor: pointer; }

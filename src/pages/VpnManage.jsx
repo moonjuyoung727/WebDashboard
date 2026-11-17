@@ -272,7 +272,6 @@ function VpnManage() {
       )}
       {loading && <p role="status">VPN 연결 정보를 불러오고 있습니다...</p>}
       <VpnSummary
-        onPeerReconnect={fetchVpnData}
         simulated={server?.driver_mode === "virtual"}
         peerStatus={loading ? "connecting" : loadError ? "error" : server ? "connected" : "disconnected"}
         totalDevices={devices.length}

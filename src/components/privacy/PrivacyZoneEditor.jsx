@@ -3,7 +3,8 @@ import { FiTrash2, FiEye, FiEyeOff } from "react-icons/fi";
 import Toggle from "../Toggle";
 import "./PrivacyZoneEditor.css";
 
-export const MAX_ZONES = 4;
+export const MAX_ZONES = 20;    // ICD 2.6.2 보드 1개당 최대 20개
+const MAX_NAME_LENGTH = 30;     // ICD 2.6.1 zone_name 최대 30자
 const MIN_SIZE = 0.03; // 너무 작은 영역 방지 (비율)
 
 function clamp(value) {
@@ -154,7 +155,7 @@ function PrivacyZoneEditor({ zones, onChange, cameraName }) {
               <input
                 className="field-input"
                 value={zone.name}
-                maxLength={20}
+                maxLength={MAX_NAME_LENGTH}
                 onChange={(e) => updateZone(zone.id, { name: e.target.value })}
                 aria-label="영역 이름"
               />

@@ -106,7 +106,15 @@ export default vpnApi;
 // VpnContext가 이를 연결 실패로 처리한다
 const CLIENT_VPN_CHECK_TIMEOUT_MS = 5000;
 
+// TODO(임시): 서버에 GET /v1/status가 아직 준비되지 않아서 확인을 건너뛰고 항상 연결됨으로 처리한다
+// 서버가 준비되면 false로 바꾸거나 이 상수를 지운다
+const SKIP_CLIENT_VPN_CHECK = false;
+
 export async function fetchClientVpnStatus(options = {}) {
+  if (SKIP_CLIENT_VPN_CHECK) {
+    return true;
+  }
+
   const response = await apiFetch(`/status`, {
     timeoutMs: CLIENT_VPN_CHECK_TIMEOUT_MS,
     reportReachable: false,  // 확인 요청 자신의 응답으로 확인을 다시 부르지 않게

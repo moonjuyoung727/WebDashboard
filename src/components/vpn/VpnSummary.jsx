@@ -20,7 +20,6 @@ const PEER_STATUS_TEXT = {
 // Client VPN 연결 상태 + 카메라 VPN 상태 요약을 한 줄로 (WEB-F-041 / WEB-F-050)
 function VpnSummary({
   peerStatus,
-  onPeerReconnect, // 재연결 버튼용 (현재 버튼은 숨김 상태)
   totalDevices,
   connectedDevices,
   disconnectedDevices,
@@ -59,15 +58,6 @@ function VpnSummary({
           <small className="vpn-peer-message">{peer.message}</small>
           {simulated && <small className="vpn-peer-message">개발용 가상 VPN 상태입니다. 실제 터널 연결 상태와 다릅니다.</small>}
         </div>
-
-        <button
-          type="button"
-          className="peer-connect-button"
-          onClick={onPeerReconnect}
-          disabled={disabled || peerStatus === "connecting"}
-        >
-          상태 다시 확인
-        </button>
       </div>
 
       {/* 카메라 VPN 상태 요약 */}
